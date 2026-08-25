@@ -21,7 +21,7 @@ export default function WhatWeDoPage() {
             How we <em className="font-medium text-accent italic">actually</em> make an ad.
           </h1>
           <p className="mt-8 max-w-[600px] text-lg leading-[1.65] text-text-dim">
-            No black box. Here's the process behind every campaign we ship —
+            No black box. Here&apos;s the process behind every campaign we ship —
             where AI does the heavy lifting, and where a person takes over.
           </p>
         </Reveal>
