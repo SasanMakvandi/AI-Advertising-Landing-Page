@@ -1,22 +1,32 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Fraunces, JetBrains_Mono } from "next/font/google";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Adnova — AI-Powered Advertising Studio",
+  title: "Adnova — AI-Engineered, Humanly Directed Advertising",
   description:
-    "Adnova blends AI generation with human creative direction to produce advertising campaigns faster and cheaper, without sacrificing quality.",
+    "Adnova uses AI to get campaigns moving fast, then a real creative director shapes the work until it looks like your brand made it.",
 };
 
 export default function RootLayout({
@@ -27,9 +37,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
+        className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        {children}
+        <Navbar />
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );

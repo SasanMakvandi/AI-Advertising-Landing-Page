@@ -1,25 +1,19 @@
-import { BackgroundFX } from "@/components/BackgroundFX";
-import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
-import { Services } from "@/components/Services";
+import { CapabilityStrip } from "@/components/CapabilityStrip";
 import { Showcase } from "@/components/Showcase";
-import { About } from "@/components/About";
-import { Contact } from "@/components/Contact";
-import { Footer } from "@/components/Footer";
+import { LogoMarquee } from "@/components/LogoMarquee";
+import { PhoneReels } from "@/components/PhoneReels";
+import { Pricing } from "@/components/Pricing";
 
 export default function Home() {
   return (
     <>
-      <BackgroundFX />
-      <Navbar />
-      <main>
-        <Hero />
-        <Services />
-        <Showcase />
-        <About />
-        <Contact />
-      </main>
-      <Footer />
+      <Hero />
+      <CapabilityStrip />
+      <Showcase />
+      <LogoMarquee />
+      <PhoneReels />
+      <Pricing />
     </>
   );
 }

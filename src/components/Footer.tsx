@@ -1,31 +1,39 @@
-import { Container } from "./ui/Container";
-import { brand, navLinks } from "@/lib/content";
+import { ArrowRight } from "lucide-react";
+import { Reveal } from "./ui/Reveal";
+import { footer } from "@/lib/content";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-10">
-      <Container className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-        <div className="text-center sm:text-left">
-          <p className="font-display text-base font-semibold">{brand.name}</p>
-          <p className="mt-1 text-sm text-muted-2">{brand.tagline}</p>
+    <footer className="mx-auto max-w-[1120px] px-6 pt-[70px] pb-14 lg:px-8">
+      <Reveal className="rounded-[28px] bg-text px-8 py-14 sm:px-14 sm:py-16">
+        <div className="flex items-center gap-2 text-sm font-semibold text-coral">
+          <span className="h-[7px] w-[7px] rounded-full bg-coral" />
+          {footer.eyebrow}
         </div>
 
-        <nav className="flex flex-wrap items-center justify-center gap-6">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <h2 className="mt-6 max-w-[680px] font-serif text-[clamp(30px,4.4vw,50px)] leading-[1.1] font-medium tracking-tight text-bg italic">
+          {footer.headline}
+        </h2>
 
-        <p className="text-sm text-muted-2">
-          © {new Date().getFullYear()} {brand.name}. All rights reserved.
-        </p>
-      </Container>
+        <div className="mt-8">
+          <a
+            href="/contact"
+            className="group inline-flex items-center gap-2 rounded-full bg-coral px-[26px] py-[15px] text-[15px] font-semibold text-white transition-colors hover:bg-[#ff7455]"
+          >
+            Launch your campaign
+            <ArrowRight
+              size={16}
+              className="transition-transform group-hover:translate-x-0.5"
+            />
+          </a>
+        </div>
+
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-3 border-t border-white/12 pt-[22px] text-[13px] text-white/50">
+          <span>adnova © {new Date().getFullYear()}</span>
+          <span>{footer.location}</span>
+          <span>{footer.email}</span>
+        </div>
+      </Reveal>
     </footer>
   );
 }

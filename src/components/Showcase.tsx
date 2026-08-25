@@ -1,52 +1,77 @@
-import { Container } from "./ui/Container";
-import { SectionHeading } from "./ui/SectionHeading";
+"use client";
+
+import { useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
+import { SectionHead } from "./ui/SectionHead";
 import { Reveal } from "./ui/Reveal";
 import { projects } from "@/lib/content";
 
+function ProjectCard({
+  project,
+  index,
+}: {
+  project: (typeof projects)[number];
+  index: number;
+}) {
+  const [muted, setMuted] = useState(true);
+
+  return (
+    <Reveal
+      delay={index * 0.08}
+      className={`py-14 ${index !== 0 ? "border-t border-hair" : "pt-2"}`}
+    >
+      <div className="relative mb-7 aspect-video overflow-hidden rounded-[20px] shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)]">
+        <div className="absolute inset-0" style={{ background: "#E4DECF" }} />
+        <div
+          className="animate-kenburns absolute inset-0"
+          style={{ background: project.gradient, animationDelay: `${index * 0.6}s` }}
+        />
+        <div className="absolute top-4 right-4 z-[2] flex items-center gap-[7px] rounded-full bg-white/92 px-3 py-1.5 text-[11.5px] font-semibold text-text">
+          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-coral" />
+          Playing
+        </div>
+        <button
+          type="button"
+          onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? "Unmute preview" : "Mute preview"}
+          className="absolute bottom-4 left-4 z-[2] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/88"
+        >
+          {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+        </button>
+      </div>
+
+      <div className="max-w-[660px]">
+        <span className="mb-2.5 block text-[13px] font-semibold tracking-wide text-accent uppercase">
+          {project.tag}
+        </span>
+        <h3 className="mb-3.5 font-serif text-[clamp(24px,2.6vw,32px)] font-semibold tracking-tight text-text">
+          {project.title}
+        </h3>
+        <p className="max-w-[560px] text-[15.5px] leading-[1.65] text-text-dim">
+          {project.description}
+        </p>
+        <div className="mt-5 text-sm font-semibold text-text">
+          {project.result.label}
+          <span className="text-coral">{project.result.highlight}</span>
+          {project.result.rest}
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
 export function Showcase() {
   return (
-    <section id="work" className="py-24 sm:py-32">
-      <Container>
-        <SectionHeading
-          eyebrow="Selected work"
-          title="A few things we've shipped"
-          description="A snapshot of recent campaigns — real briefs, real constraints, real results."
-        />
-
-        <div className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {projects.map((project, i) => (
-            <Reveal key={project.title} delay={i * 0.1}>
-              <div className="card-surface group h-full overflow-hidden rounded-2xl transition-colors hover:border-border-strong">
-                <div
-                  className={`relative h-48 overflow-hidden bg-gradient-to-br ${project.gradient}`}
-                >
-                  <div className="absolute inset-0 bg-black/10 transition-opacity group-hover:bg-black/0" />
-                  <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                </div>
-                <div className="p-6">
-                  <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold">
-                    {project.title}
-                  </h3>
-                  <p className="text-sm text-muted-2">{project.client}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">
-                    {project.description}
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </Container>
+    <section id="work" className="mx-auto max-w-[1200px] px-6 py-[90px] lg:px-12">
+      <SectionHead
+        title="Recent work"
+        description="Hover a piece to see it before and after a person touches it. That pass is what you're paying for."
+      />
+      <div>
+        {projects.map((project, i) => (
+          <ProjectCard key={project.title} project={project} index={i} />
+        ))}
+      </div>
     </section>
   );
 }

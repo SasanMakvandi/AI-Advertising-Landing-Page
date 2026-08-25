@@ -2,8 +2,6 @@
 
 import { FormEvent, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
-import { Container } from "./ui/Container";
-import { SectionHeading } from "./ui/SectionHeading";
 import { Reveal } from "./ui/Reveal";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -33,79 +31,82 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="py-24 sm:py-32">
-      <Container>
-        <div className="card-surface glow-violet mx-auto max-w-2xl rounded-3xl p-8 sm:p-12">
-          <SectionHeading
-            eyebrow="Get in touch"
-            title="Tell us about your next campaign"
-            description="Share a bit about your brand and what you're looking to launch — we'll follow up within a couple of days."
-            align="center"
-          />
-
-          {status === "success" ? (
-            <Reveal className="mt-10 flex flex-col items-center gap-3 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-violet/20">
-                <Check size={22} className="text-accent-violet" />
-              </div>
-              <p className="text-base font-medium">Message sent</p>
-              <p className="text-sm text-muted">
-                Thanks for reaching out — we&apos;ll be in touch soon.
-              </p>
-            </Reveal>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <input
-                  required
-                  name="name"
-                  placeholder="Your name"
-                  className="rounded-xl border border-border bg-background-elevated px-4 py-3 text-sm outline-none transition-colors focus:border-accent-violet"
-                />
-                <input
-                  required
-                  type="email"
-                  name="email"
-                  placeholder="Email address"
-                  className="rounded-xl border border-border bg-background-elevated px-4 py-3 text-sm outline-none transition-colors focus:border-accent-violet"
-                />
-              </div>
-              <input
-                name="company"
-                placeholder="Company (optional)"
-                className="rounded-xl border border-border bg-background-elevated px-4 py-3 text-sm outline-none transition-colors focus:border-accent-violet"
-              />
-              <textarea
-                required
-                name="message"
-                rows={4}
-                placeholder="What are you looking to launch?"
-                className="resize-none rounded-xl border border-border bg-background-elevated px-4 py-3 text-sm outline-none transition-colors focus:border-accent-violet"
-              />
-
-              <button
-                type="submit"
-                disabled={status === "submitting"}
-                className="group mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-transform hover:scale-[1.01] disabled:opacity-60"
-              >
-                {status === "submitting" ? "Sending..." : "Send message"}
-                {status !== "submitting" && (
-                  <ArrowRight
-                    size={16}
-                    className="transition-transform group-hover:translate-x-0.5"
-                  />
-                )}
-              </button>
-
-              {status === "error" && (
-                <p className="text-center text-sm text-accent-pink">
-                  Something went wrong — please try again.
-                </p>
-              )}
-            </form>
-          )}
+    <section id="contact" className="mx-auto max-w-[1200px] px-6 py-[90px] lg:px-12">
+      <Reveal className="mx-auto max-w-2xl rounded-[28px] border border-hair bg-panel p-8 shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)] sm:p-12">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-accent">
+          <span className="h-[7px] w-[7px] rounded-full bg-coral" />
+          Get in touch
         </div>
-      </Container>
+        <h2 className="font-serif text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+          Tell us about your next campaign
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-text-dim">
+          Share a bit about your brand and what you&apos;re looking to launch
+          — we&apos;ll follow up within a couple of days.
+        </p>
+
+        {status === "success" ? (
+          <Reveal className="mt-10 flex flex-col items-center gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft">
+              <Check size={22} className="text-accent" />
+            </div>
+            <p className="text-base font-medium text-text">Message sent</p>
+            <p className="text-sm text-text-dim">
+              Thanks for reaching out — we&apos;ll be in touch soon.
+            </p>
+          </Reveal>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <input
+                required
+                name="name"
+                placeholder="Your name"
+                className="rounded-xl border border-hair bg-bg px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+              />
+              <input
+                required
+                type="email"
+                name="email"
+                placeholder="Email address"
+                className="rounded-xl border border-hair bg-bg px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+              />
+            </div>
+            <input
+              name="company"
+              placeholder="Company (optional)"
+              className="rounded-xl border border-hair bg-bg px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+            />
+            <textarea
+              required
+              name="message"
+              rows={4}
+              placeholder="What are you looking to launch?"
+              className="resize-none rounded-xl border border-hair bg-bg px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent"
+            />
+
+            <button
+              type="submit"
+              disabled={status === "submitting"}
+              className="group mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-text px-6 py-3 text-sm font-semibold text-bg transition-colors hover:bg-accent disabled:opacity-60"
+            >
+              {status === "submitting" ? "Sending..." : "Send message"}
+              {status !== "submitting" && (
+                <ArrowRight
+                  size={16}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
+              )}
+            </button>
+
+            {status === "error" && (
+              <p className="text-center text-sm text-coral">
+                Something went wrong — please try again.
+              </p>
+            )}
+          </form>
+        )}
+      </Reveal>
     </section>
   );
 }

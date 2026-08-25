@@ -1,55 +1,57 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Container } from "./ui/Container";
+import { RevealSlider } from "./RevealSlider";
 
 export function Hero() {
   return (
-    <section id="top" className="relative pt-40 pb-24 sm:pt-48 sm:pb-32">
-      <Container className="flex flex-col items-center text-center">
+    <section id="top" className="pt-[90px] pb-[70px]">
+      <Container className="max-w-[1120px]">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="card-surface mb-8 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm text-muted"
+          transition={{ duration: 0.5 }}
+          className="mb-[22px] flex items-center gap-2 text-sm font-semibold text-accent"
         >
-          <Sparkles size={14} className="text-accent-violet" />
-          AI-generated. Human art-directed.
+          <span className="h-[7px] w-[7px] rounded-full bg-coral" />
+          AI-engineered, humanly directed
         </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="font-display max-w-4xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="max-w-[820px] font-serif text-[clamp(38px,5.6vw,68px)] leading-[1.06] font-semibold tracking-tight text-text"
         >
-          Advertising creative,{" "}
-          <span className="text-gradient-accent">reimagined with AI</span>
+          Ads that look hand-made,
+          <br />
+          made <em className="font-medium text-accent italic">a lot</em> faster.
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="mt-6 max-w-2xl text-lg leading-relaxed text-muted"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mt-6 max-w-[520px] text-lg leading-[1.6] text-text-dim"
         >
-          We pair AI generation with real creative direction to produce ad
-          campaigns that convert — in days, not months, and at a fraction of
-          the usual production cost.
+          We use AI to get a campaign moving in a day, then a real creative
+          director shapes it until it looks like your brand made it — not a
+          robot.
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-9 flex flex-wrap items-center gap-[18px]"
         >
           <a
-            href="#contact"
-            className="glow-violet group inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-transform hover:scale-[1.02]"
+            href="/contact"
+            className="group inline-flex items-center gap-2 rounded-full bg-text px-[26px] py-[15px] text-[15px] font-semibold text-bg transition-colors hover:bg-accent"
           >
-            Start a project
+            Launch your campaign
             <ArrowRight
               size={16}
               className="transition-transform group-hover:translate-x-0.5"
@@ -57,11 +59,13 @@ export function Hero() {
           </a>
           <a
             href="#work"
-            className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-card"
+            className="border-b-2 border-coral pb-[3px] text-[15px] font-semibold text-text"
           >
-            See our work
+            See the work
           </a>
         </motion.div>
+
+        <RevealSlider />
       </Container>
     </section>
   );
