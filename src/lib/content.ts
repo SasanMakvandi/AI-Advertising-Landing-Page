@@ -32,29 +32,29 @@ export const projects: Project[] = [
     tag: "Social ads",
     title: "Alpéire",
     description:
-      "Alpéire needed scroll-stopping product content without a full studio shoot for every SKU. We generated dozens of concept directions with AI, then finished the strongest ones until they looked shelf-ready.",
+      "Alpéire's oxygen-infused, alpine-stem-cell skincare needed product content that felt as premium as the formula. We generated dozens of AI concept directions, then finished the strongest ones until they looked shelf-ready — no full studio shoot required for every SKU.",
     result: { label: "Result: ", highlight: "3x", rest: " more ad variations tested per month" },
     video: "/videos/showcase-2.mp4",
   },
   {
     tag: "Brand launch",
-    title: "Technos Fight Gear",
+    title: "Techniques Combat",
     description:
-      "A new combat-sports apparel line needed a full product launch in three weeks. AI got the first concepts moving fast — our creative director shaped it into something that actually felt premium.",
+      "Techniques Combat needed launch creative that matched their \"Relentless by Design\" ethos — gear built by fighters, for fighters, tested in real camps. AI got the first concepts moving fast; our creative director shaped it into something that felt premium enough to trust in the cage.",
     result: { label: "Result: full brand and launch campaign in ", highlight: "18 days", rest: "" },
     video: "/videos/showcase-1.mp4",
   },
   {
     tag: "Video & motion",
-    title: "Hearth Insurance",
+    title: "RENNtech",
     description:
-      "Insurance ads are usually forgettable. We used AI to storyboard and rough-cut a dozen concepts, then shot and finished the strongest one with a real production pass.",
+      "RENNtech needed cinematic content that matched 35 years of precision Mercedes-Benz engineering — performance without compromise, in frame as well as under the hood. We generated the concept with AI, then art-directed the lighting and composition until it felt like a real campaign shoot.",
     result: { label: "Result: production time cut by ", highlight: "60%", rest: "" },
     video: "/videos/showcase-3.mp4",
   },
 ];
 
-export const clients = ["Northlight", "Vantage", "Hearth", "Foundry", "Basin", "Lumen"];
+export const clients = ["Alpéire", "Techniques Combat", "RENNtech"];
 
 type Reel = {
   handle: string;
@@ -94,13 +94,13 @@ export const reels: Reel[] = [
   {
     video: "/videos/reel-2.mp4",
     handle: "@adnova",
-    caption: "Built to pass as organic — a sponsored post that doesn't read as one",
+    caption: "RENNtech — a sponsored post built to pass as organic",
     likes: "3.1k",
     comments: "156",
     note: {
-      index: "03 — The ad that didn't look like one",
+      index: "03 — RENNtech",
       title: "Built to pass as organic",
-      body: "Sometimes the win is when nobody can tell it's sponsored. We designed this one to sit indistinguishable from the feed around it — verified badge, native caption, the whole format — baked directly into the creative.",
+      body: "For the V12 Sledgehammer launch, sometimes the win is when nobody can tell it's sponsored. We built this one to sit indistinguishable from the feed around it — verified badge, native caption, the whole format baked directly into the creative.",
     },
   },
 ];
