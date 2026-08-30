@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
 import { SectionHead } from "./ui/SectionHead";
 import { Reveal } from "./ui/Reveal";
 import { projects } from "@/lib/content";
@@ -13,31 +9,34 @@ function ProjectCard({
   project: (typeof projects)[number];
   index: number;
 }) {
-  const [muted, setMuted] = useState(true);
-
   return (
     <Reveal
       delay={index * 0.08}
       className={`py-14 ${index !== 0 ? "border-t border-hair" : "pt-2"}`}
     >
       <div className="relative mb-7 aspect-video overflow-hidden rounded-[20px] shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)]">
-        <div className="absolute inset-0" style={{ background: "#E4DECF" }} />
-        <div
-          className="animate-kenburns absolute inset-0"
-          style={{ background: project.gradient, animationDelay: `${index * 0.6}s` }}
-        />
+        {project.video ? (
+          <video
+            className="absolute inset-0 h-full w-full object-cover"
+            src={project.video}
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+        ) : (
+          <>
+            <div className="absolute inset-0" style={{ background: "#E4DECF" }} />
+            <div
+              className="animate-kenburns absolute inset-0"
+              style={{ background: project.gradient, animationDelay: `${index * 0.6}s` }}
+            />
+          </>
+        )}
         <div className="absolute top-4 right-4 z-[2] flex items-center gap-[7px] rounded-full bg-white/92 px-3 py-1.5 text-[11.5px] font-semibold text-text">
           <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-coral" />
           Playing
         </div>
-        <button
-          type="button"
-          onClick={() => setMuted((m) => !m)}
-          aria-label={muted ? "Unmute preview" : "Mute preview"}
-          className="absolute bottom-4 left-4 z-[2] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/88"
-        >
-          {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-        </button>
       </div>
 
       <div className="max-w-[660px]">

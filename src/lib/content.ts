@@ -18,22 +18,31 @@ export const capabilities = [
   "Copywriting",
 ];
 
-export const projects = [
+type Project = {
+  tag: string;
+  title: string;
+  description: string;
+  result: { label: string; highlight: string; rest: string };
+  video?: string;
+  gradient?: string;
+};
+
+export const projects: Project[] = [
   {
     tag: "Social ads",
-    title: "Northlight Coffee",
+    title: "Alpéire",
     description:
-      "Northlight needed a steady stream of scroll-stopping ads without hiring a full creative team. We generated dozens of directions with AI, then hand-picked and finished the ones that actually looked like their brand.",
+      "Alpéire needed scroll-stopping product content without a full studio shoot for every SKU. We generated dozens of concept directions with AI, then finished the strongest ones until they looked shelf-ready.",
     result: { label: "Result: ", highlight: "3x", rest: " more ad variations tested per month" },
-    gradient: "linear-gradient(155deg,#5457FF,#4B4EFF)",
+    video: "/videos/showcase-2.mp4",
   },
   {
     tag: "Brand launch",
-    title: "Vantage Running Co.",
+    title: "Technos Fight Gear",
     description:
-      "A brand-new running shoe line needed a full identity and launch campaign in three weeks. AI got the first concepts moving fast — our creative director shaped it into something that actually felt premium.",
+      "A new combat-sports apparel line needed a full product launch in three weeks. AI got the first concepts moving fast — our creative director shaped it into something that actually felt premium.",
     result: { label: "Result: full brand and launch campaign in ", highlight: "18 days", rest: "" },
-    gradient: "linear-gradient(155deg,#FF7455,#FF5C39)",
+    video: "/videos/showcase-1.mp4",
   },
   {
     tag: "Video & motion",

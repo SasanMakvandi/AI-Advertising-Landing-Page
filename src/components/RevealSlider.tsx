@@ -1,71 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
-
-function drawFrame(canvas: HTMLCanvasElement, isAfter: boolean) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const cw = canvas.clientWidth;
-  const ch = canvas.clientHeight;
-  canvas.width = cw * 2;
-  canvas.height = ch * 2;
-  ctx.scale(2, 2);
-
-  if (isAfter) {
-    const grad = ctx.createLinearGradient(0, 0, cw, ch);
-    grad.addColorStop(0, "#5457FF");
-    grad.addColorStop(1, "#4B4EFF");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, cw, ch);
-    ctx.fillStyle = "#FF5C39";
-    ctx.beginPath();
-    ctx.arc(cw * 0.8, ch * 0.26, 54, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "600 32px Fraunces, serif";
-    ctx.fillText("Run further.", cw * 0.07, ch * 0.62);
-    ctx.font = "500 14px Inter, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText("Vantage Running Co.", cw * 0.07, ch * 0.7);
-  } else {
-    ctx.fillStyle = "#EFE9DA";
-    ctx.fillRect(0, 0, cw, ch);
-    ctx.strokeStyle = "rgba(33,30,25,0.25)";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
-    ctx.strokeRect(cw * 0.06, ch * 0.14, cw * 0.3, ch * 0.28);
-    ctx.beginPath();
-    ctx.arc(cw * 0.8, ch * 0.26, 54, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(33,30,25,0.45)";
-    ctx.font = "600 32px Fraunces, serif";
-    ctx.fillText("Run further.", cw * 0.07, ch * 0.62);
-    ctx.font = "500 14px Inter, sans-serif";
-    ctx.fillStyle = "rgba(33,30,25,0.35)";
-    ctx.fillText("Layout draft", cw * 0.07, ch * 0.7);
-  }
-}
 
 export function RevealSlider() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
-  const beforeCanvasRef = useRef<HTMLCanvasElement>(null);
-  const afterCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const before = beforeCanvasRef.current;
-    const after = afterCanvasRef.current;
-    if (!before || !after) return;
-
-    const render = () => {
-      drawFrame(before, false);
-      drawFrame(after, true);
-    };
-    render();
-    window.addEventListener("resize", render);
-    return () => window.removeEventListener("resize", render);
-  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -125,13 +65,27 @@ export function RevealSlider() {
       style={{ "--scan": "38%" } as React.CSSProperties}
     >
       <div className="absolute inset-0">
-        <canvas ref={beforeCanvasRef} className="block h-full w-full" />
+        <Image
+          src="/images/reveal-before.webp"
+          alt="AI-engineered first draft"
+          fill
+          priority
+          sizes="(min-width: 1120px) 1120px, 100vw"
+          className="object-cover"
+        />
       </div>
       <div
         className="absolute inset-0"
         style={{ clipPath: "inset(0 0 0 var(--scan, 38%))" }}
       >
-        <canvas ref={afterCanvasRef} className="block h-full w-full" />
+        <Image
+          src="/images/reveal-after.webp"
+          alt="Finished, humanly-directed result"
+          fill
+          priority
+          sizes="(min-width: 1120px) 1120px, 100vw"
+          className="object-cover"
+        />
       </div>
 
       <div className="absolute top-[18px] left-[18px] z-[2] rounded-full bg-panel-2 px-3 py-1.5 text-[12.5px] font-semibold text-text-dim">
@@ -154,7 +108,7 @@ export function RevealSlider() {
       </div>
 
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-white/92 to-white/0 px-[22px] py-4 text-[13px] text-text-dim">
-        <span>Vantage Running Co.</span>
+        <span>Alpéire Skincare</span>
         <span>Drag to compare</span>
       </div>
     </div>
