@@ -64,8 +64,6 @@ type Reel = {
   note: { index: string; title: string; body: string };
   video?: string;
   gradient?: string;
-  /** Video already has its own baked-in post UI — skip our overlay so they don't stack. */
-  hideOverlay?: boolean;
 };
 
 export const reels: Reel[] = [
@@ -97,9 +95,8 @@ export const reels: Reel[] = [
     video: "/videos/reel-2.mp4",
     handle: "@adnova",
     caption: "Built to pass as organic — a sponsored post that doesn't read as one",
-    likes: "—",
-    comments: "—",
-    hideOverlay: true,
+    likes: "3.1k",
+    comments: "156",
     note: {
       index: "03 — The ad that didn't look like one",
       title: "Built to pass as organic",
