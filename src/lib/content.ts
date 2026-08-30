@@ -50,59 +50,60 @@ export const projects: Project[] = [
     description:
       "Insurance ads are usually forgettable. We used AI to storyboard and rough-cut a dozen concepts, then shot and finished the strongest one with a real production pass.",
     result: { label: "Result: production time cut by ", highlight: "60%", rest: "" },
-    gradient: "linear-gradient(155deg,#211E19,#4B4EFF)",
+    video: "/videos/showcase-3.mp4",
   },
 ];
 
 export const clients = ["Northlight", "Vantage", "Hearth", "Foundry", "Basin", "Lumen"];
 
-export const reels = [
+type Reel = {
+  handle: string;
+  caption: string;
+  likes: string;
+  comments: string;
+  note: { index: string; title: string; body: string };
+  video?: string;
+  gradient?: string;
+  /** Video already has its own baked-in post UI — skip our overlay so they don't stack. */
+  hideOverlay?: boolean;
+};
+
+export const reels: Reel[] = [
   {
-    gradient: "linear-gradient(155deg,#5457FF,#211E19,#4B4EFF)",
+    video: "/videos/reel-1.mp4",
     handle: "@adnova",
-    caption: "Behind the scan — how we shoot a campaign in half the time",
+    caption: "Alpéire, on location — shooting the beach concept for Super Hydrating Cream",
     likes: "1.2k",
     comments: "84",
     note: {
-      index: "01 — Behind the scan",
-      title: "How we shoot a campaign in half the time",
-      body: "AI drafted twelve directions overnight. Our creative director picked the strongest one and reworked the framing, color, and pacing until it actually looked like ours — not a template.",
+      index: "01 — Alpéire, on location",
+      title: "Taking the concept to a real shoot",
+      body: "The AI-generated concept nailed the mood, so we brought it to an actual coastal shoot — real product, real light, real texture. That pass is what separates an ad that looks generated from one that looks intentional.",
     },
   },
   {
-    gradient: "linear-gradient(155deg,#FF7455,#211E19,#FF5C39)",
+    video: "/videos/reel-3.mp4",
     handle: "@adnova",
-    caption: "Vantage Running Co. — from AI draft to finished brand in 18 days",
+    caption: "Sourcing the story — the alpine rose fields behind Alpéire's hero ingredient",
     likes: "2.4k",
     comments: "112",
     note: {
-      index: "02 — Vantage Running Co.",
-      title: "From AI draft to finished brand in 18 days",
-      body: "A brand-new shoe line needed a full identity fast. AI moved the early concepts along quickly — the logo, palette, and tone you see here were shaped by hand once the direction was clear.",
+      index: "02 — The ingredient story",
+      title: "Where the rose extract actually comes from",
+      body: "Every Alpéire product leans on its ingredient story. We shot the sourcing itself — not a stock photo of a flower — so the claim on the label has something real behind it.",
     },
   },
   {
-    gradient: "linear-gradient(155deg,#211E19,#4B4EFF,#8385FF)",
+    video: "/videos/reel-2.mp4",
     handle: "@adnova",
-    caption: "Hearth Insurance — the concept that made the cut",
-    likes: "908",
-    comments: "47",
+    caption: "Built to pass as organic — a sponsored post that doesn't read as one",
+    likes: "—",
+    comments: "—",
+    hideOverlay: true,
     note: {
-      index: "03 — Hearth Insurance",
-      title: "The concept that made the cut",
-      body: "We storyboarded a dozen ideas with AI and only shot the one that actually landed. Cut the usual back-and-forth, and the production budget, way down.",
-    },
-  },
-  {
-    gradient: "linear-gradient(155deg,#FF5C39,#211E19,#4B4EFF)",
-    handle: "@adnova",
-    caption: "A day in the studio — on-location shoot for Foundry Home Goods",
-    likes: "1.6k",
-    comments: "63",
-    note: {
-      index: "04 — Foundry Home Goods",
-      title: "A day in the studio, on location",
-      body: "Once the AI draft nailed the mood, we brought it into a real shoot — natural light, real product, a crew on site for the day to get it right.",
+      index: "03 — The ad that didn't look like one",
+      title: "Built to pass as organic",
+      body: "Sometimes the win is when nobody can tell it's sponsored. We designed this one to sit indistinguishable from the feed around it — verified badge, native caption, the whole format — baked directly into the creative.",
     },
   },
 ];

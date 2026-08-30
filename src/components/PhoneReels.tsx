@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Send, VolumeX } from "lucide-react";
+import { Heart, MessageCircle, Send } from "lucide-react";
 import { Reveal } from "./ui/Reveal";
 import { reels } from "@/lib/content";
 
@@ -70,35 +70,47 @@ export function PhoneReels() {
                 data-index={i}
                 className="relative flex h-[560px] snap-start items-end overflow-hidden"
               >
-                <div
-                  className="animate-reelshift absolute -inset-[10%]"
-                  style={{ background: reel.gradient }}
-                />
-                <div className="absolute top-5 right-4 z-[3] flex h-[30px] w-[30px] items-center justify-center rounded-full bg-white/18 text-white">
-                  <VolumeX size={14} />
-                </div>
-                <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/75 via-black/10 via-45% to-transparent to-65%" />
-                <div className="relative z-[2] flex w-full items-end justify-between gap-3.5 px-4 pb-6">
-                  <div className="max-w-[190px] text-left text-white">
-                    <div className="mb-1.5 text-[13.5px] font-semibold">{reel.handle}</div>
-                    <div className="text-[12.5px] leading-[1.45] text-white/85">
-                      {reel.caption}
+                {reel.video ? (
+                  <video
+                    className="absolute inset-0 h-full w-full object-cover"
+                    src={reel.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : (
+                  <div
+                    className="animate-reelshift absolute -inset-[10%]"
+                    style={{ background: reel.gradient }}
+                  />
+                )}
+                {!reel.hideOverlay && (
+                  <>
+                    <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/75 via-black/10 via-45% to-transparent to-65%" />
+                    <div className="relative z-[2] flex w-full items-end justify-between gap-3.5 px-4 pb-6">
+                      <div className="max-w-[190px] text-left text-white">
+                        <div className="mb-1.5 text-[13.5px] font-semibold">{reel.handle}</div>
+                        <div className="text-[12.5px] leading-[1.45] text-white/85">
+                          {reel.caption}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-4 text-white">
+                        <button type="button" className="flex flex-col items-center gap-1">
+                          <Heart size={20} />
+                          <span className="text-[11px] font-semibold">{reel.likes}</span>
+                        </button>
+                        <button type="button" className="flex flex-col items-center gap-1">
+                          <MessageCircle size={20} />
+                          <span className="text-[11px] font-semibold">{reel.comments}</span>
+                        </button>
+                        <button type="button" className="flex flex-col items-center gap-1">
+                          <Send size={20} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-center gap-4 text-white">
-                    <button type="button" className="flex flex-col items-center gap-1">
-                      <Heart size={20} />
-                      <span className="text-[11px] font-semibold">{reel.likes}</span>
-                    </button>
-                    <button type="button" className="flex flex-col items-center gap-1">
-                      <MessageCircle size={20} />
-                      <span className="text-[11px] font-semibold">{reel.comments}</span>
-                    </button>
-                    <button type="button" className="flex flex-col items-center gap-1">
-                      <Send size={20} />
-                    </button>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             ))}
 
