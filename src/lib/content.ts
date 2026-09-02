@@ -1,6 +1,6 @@
 export const brand = {
-  name: "adnova",
-  tagline: "AI-engineered, humanly directed",
+  name: "reelsimple",
+  tagline: "AI-engineered, humanly directed production",
 };
 
 export const navLinks = [
@@ -12,8 +12,10 @@ export const navLinks = [
 
 export const capabilities = [
   "Social ads",
-  "Brand identity",
+  "Real estate & listing photos",
+  "Product photography",
   "Video & motion",
+  "Brand identity",
   "Website & landing pages",
   "Copywriting",
 ];
@@ -21,40 +23,60 @@ export const capabilities = [
 type Project = {
   tag: string;
   title: string;
+  logo: string;
+  logoWidth: number;
+  logoHeight: number;
   description: string;
   result: { label: string; highlight: string; rest: string };
   video?: string;
+  images?: string[];
   gradient?: string;
 };
 
 export const projects: Project[] = [
   {
-    tag: "Social ads",
+    tag: "Flagship product launch",
     title: "Alpéire",
+    logo: "/logos/alpeire.svg",
+    logoWidth: 605,
+    logoHeight: 143,
     description:
       "Alpéire's oxygen-infused, alpine-stem-cell skincare needed product content that felt as premium as the formula. We generated dozens of AI concept directions, then finished the strongest ones until they looked shelf-ready — no full studio shoot required for every SKU.",
     result: { label: "Result: ", highlight: "3x", rest: " more ad variations tested per month" },
     video: "/videos/showcase-2.mp4",
   },
   {
-    tag: "Brand launch",
+    tag: "Product advertisement",
     title: "Techniques Combat",
+    logo: "/logos/techniques-combat.png",
+    logoWidth: 400,
+    logoHeight: 66,
     description:
       "Techniques Combat needed launch creative that matched their \"Relentless by Design\" ethos — gear built by fighters, for fighters, tested in real camps. AI got the first concepts moving fast; our creative director shaped it into something that felt premium enough to trust in the cage.",
     result: { label: "Result: full brand and launch campaign in ", highlight: "18 days", rest: "" },
     video: "/videos/showcase-1.mp4",
   },
   {
-    tag: "Video & motion",
+    tag: "Concept modeled and rendered",
     title: "RENNtech",
+    logo: "/logos/renntech.png",
+    logoWidth: 1240,
+    logoHeight: 272,
     description:
       "RENNtech needed cinematic content that matched 35 years of precision Mercedes-Benz engineering — performance without compromise, in frame as well as under the hood. We generated the concept with AI, then art-directed the lighting and composition until it felt like a real campaign shoot.",
     result: { label: "Result: production time cut by ", highlight: "60%", rest: "" },
-    video: "/videos/showcase-3.mp4",
+    images: ["/images/renntech-shop.png", "/images/renntech-driveway.png"],
   },
 ];
 
-export const clients = ["Alpéire", "Techniques Combat", "RENNtech"];
+export const clients = [
+  { name: "Alpéire", logo: "/logos/alpeire.svg", width: 605, height: 143 },
+  { name: "Techniques Combat", logo: "/logos/techniques-combat.png", width: 400, height: 66 },
+  { name: "RENNtech", logo: "/logos/renntech.png", width: 1240, height: 272 },
+  { name: "GORZ", logo: "/logos/gorz.png", width: 249, height: 23, invert: true },
+  { name: "Caspien Kebabs", logo: "/logos/caspien-kebabs.png", width: 120, height: 60, invert: true },
+  { name: "Built By Fred", logo: "/logos/built-by-fred.png", width: 158, height: 35 },
+];
 
 type Reel = {
   handle: string;
@@ -69,7 +91,7 @@ type Reel = {
 export const reels: Reel[] = [
   {
     video: "/videos/reel-1.mp4",
-    handle: "@adnova",
+    handle: "@reelsimple",
     caption: "Alpéire, on location — shooting the beach concept for Super Hydrating Cream",
     likes: "1.2k",
     comments: "84",
@@ -81,7 +103,7 @@ export const reels: Reel[] = [
   },
   {
     video: "/videos/reel-3.mp4",
-    handle: "@adnova",
+    handle: "@reelsimple",
     caption: "Sourcing the story — the alpine rose fields behind Alpéire's hero ingredient",
     likes: "2.4k",
     comments: "112",
@@ -93,7 +115,7 @@ export const reels: Reel[] = [
   },
   {
     video: "/videos/reel-2.mp4",
-    handle: "@adnova",
+    handle: "@reelsimple",
     caption: "RENNtech — a sponsored post built to pass as organic",
     likes: "3.1k",
     comments: "156",
@@ -107,13 +129,13 @@ export const reels: Reel[] = [
 
 export const pricing = [
   {
-    name: "Promotional video",
+    name: "AI Content",
     price: "$600",
     priceSuffix: "/ 2 pieces of content",
-    description: "AI-generated promotional video content, ready to run on your platforms.",
+    description: "AI-generated photo or video content, ready to use — for ads, listings, or anything else you need.",
     features: [
-      "AI-generated video concepts and edits",
-      "Sized for the platforms you run on",
+      "AI-generated photo or video concepts and edits",
+      "Sized for the platform or use case you need",
       "Matched to your existing brand",
       "Delivered within a few days",
     ],
@@ -124,9 +146,9 @@ export const pricing = [
     name: "AI + Shoot",
     badge: "Most popular",
     description:
-      "Everything in Promotional video, plus a real photo or video shoot and a full human art-direction pass.",
+      "Everything in AI Content, plus a real photo or video shoot and a full human art-direction pass.",
     features: [
-      "Everything in Promotional video",
+      "Everything in AI Content",
       "On-location photo or video shoot",
       "Art-directed by our team",
       "Multiple formats for every platform",
@@ -151,12 +173,12 @@ export const pricing = [
 
 export const about = {
   eyebrow: "About us",
-  headline: "We started adnova because good ads were taking ",
-  headlineEm: "too long",
+  headline: "We started ReelSimple because good photo and video content was costing ",
+  headlineEm: "too much",
   headlineEnd: " to make.",
   paragraphs: [
-    "Most agencies either move fast and it shows, or they take their time and it costs a fortune. We didn't think you should have to choose. So we built a process that uses AI to do the slow, repetitive part of creative production — and kept a real creative director on every project to make sure it never looks like it.",
-    "We're a small team based in Toronto, working with brands who'd rather spend their budget on media than on production overhead.",
+    "Most studios either cut corners to hit a budget, or charge full production rates no matter how small the job is. We didn't think you should have to choose. So we built a process that uses AI to handle the expensive, time-consuming part of a shoot — and kept a real creative director on every project to make sure it never looks like it.",
+    "We're a small team based in Toronto, working with small businesses, realtors, and anyone else who needs professional photo or video content without paying for a full production crew every time.",
   ],
 };
 
@@ -220,14 +242,33 @@ export const processSteps = [
   {
     index: "05",
     title: "Testing & iteration",
-    body: "We ship variants, watch what performs, and feed that back into the next round instead of guessing what to make next.",
+    body: "For campaigns that call for it, we ship variants, watch what performs, and feed that back into the next round instead of guessing what to make next.",
   },
   {
     index: "06",
     title: "Launch & handoff",
-    body: "You get finished assets sized for every platform you're running on, plus the reasoning behind why we made the choices we did.",
+    body: "You get finished, ready-to-use assets — sized for every platform or use case — plus the reasoning behind why we made the choices we did.",
   },
 ];
+
+export const costBreakdown = {
+  eyebrow: "Let's talk numbers",
+  headline: "Okay, enough talking — let's talk numbers.",
+  description:
+    "Here's what it usually costs to launch a brand from scratch, piecing it together with a separate freelancer or agency for each part.",
+  items: [
+    { label: "Brand identity & logo design", cost: "$2,000–$5,000" },
+    { label: "A professional ad photo or video shoot", cost: "$1,500–$4,000" },
+    { label: "Advertising & marketing consultation", cost: "$150–$300 / hr" },
+    { label: "Website design & development", cost: "$3,000–$8,000" },
+    { label: "Ongoing site maintenance & hosting", cost: "$100–$300 / mo" },
+    { label: "Copywriting for your site and ads", cost: "$500–$1,500" },
+    { label: "Coordinating five different freelancers", cost: "Countless hours" },
+  ],
+  punchlineStart: "With ReelSimple, none of that is separate. ",
+  punchlineEm: "One package, one team,",
+  punchlineEnd: " tailored to exactly what you need.",
+};
 
 export const services = [
   {
@@ -235,16 +276,24 @@ export const services = [
     description: "Scroll-stopping creative sized and paced for the feed it's actually running in.",
   },
   {
+    title: "Real estate & listing photos",
+    description: "Staged, magazine-ready shots for a listing — without the cost of a full physical staging and shoot.",
+  },
+  {
+    title: "Product photography",
+    description: "Clean, shelf-ready product and lifestyle shots, generated and art-directed until they look real.",
+  },
+  {
     title: "Brand identity",
     description: "Logo, palette, type, and tone — built to hold up across every surface you'll use it on.",
   },
   {
     title: "Video & motion",
-    description: "From AI-assisted rough cuts to fully produced spots.",
+    description: "From AI-assisted rough cuts to fully produced spots, for an ad campaign or anything else you need in motion.",
   },
   {
     title: "Website & landing pages",
-    description: "Fast, on-brand pages built to convert the traffic your ads send.",
+    description: "Fast, on-brand pages built to convert the traffic you send them.",
   },
   {
     title: "Copywriting",
@@ -253,9 +302,9 @@ export const services = [
 ];
 
 export const footer = {
-  eyebrow: "Launch your campaign",
+  eyebrow: "Start your project",
   headline:
-    "Tell us what you sell. We'll have a real campaign back to you before your next coffee runs out.",
+    "Tell us what you need shot. We'll have real content back to you before your next coffee runs out.",
   location: "Toronto, ON",
-  email: "hello@adnova.ai",
+  email: "hello@reelsimple.ai",
 };

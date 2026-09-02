@@ -1,5 +1,7 @@
+import Image from "next/image";
 import { SectionHead } from "./ui/SectionHead";
 import { Reveal } from "./ui/Reveal";
+import { ShowcaseCarousel } from "./ShowcaseCarousel";
 import { projects } from "@/lib/content";
 
 function ProjectCard({
@@ -24,6 +26,8 @@ function ProjectCard({
             muted
             playsInline
           />
+        ) : project.images ? (
+          <ShowcaseCarousel images={project.images} alt={project.title} />
         ) : (
           <>
             <div className="absolute inset-0" style={{ background: "#E4DECF" }} />
@@ -33,19 +37,25 @@ function ProjectCard({
             />
           </>
         )}
-        <div className="absolute top-4 right-4 z-[2] flex items-center gap-[7px] rounded-full bg-white/92 px-3 py-1.5 text-[11.5px] font-semibold text-text">
-          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-coral" />
-          Playing
-        </div>
+        {project.video && (
+          <div className="absolute top-4 right-4 z-[2] flex items-center gap-[7px] rounded-full bg-white/92 px-3 py-1.5 text-[11.5px] font-semibold text-text">
+            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-coral" />
+            Playing
+          </div>
+        )}
       </div>
 
       <div className="max-w-[660px]">
         <span className="mb-2.5 block text-[13px] font-semibold tracking-wide text-accent uppercase">
           {project.tag}
         </span>
-        <h3 className="mb-3.5 font-serif text-[clamp(24px,2.6vw,32px)] font-semibold tracking-tight text-text">
-          {project.title}
-        </h3>
+        <Image
+          src={project.logo}
+          alt={project.title}
+          width={project.logoWidth}
+          height={project.logoHeight}
+          className="mb-4 h-8 w-auto object-contain sm:h-9"
+        />
         <p className="max-w-[560px] text-[15.5px] leading-[1.65] text-text-dim">
           {project.description}
         </p>

@@ -19,8 +19,8 @@ export function Navbar() {
   return (
     <header className="relative z-50 border-b border-hair">
       <Container className="flex h-[76px] items-center justify-between">
-        <Link href="/" className="font-serif text-xl font-semibold tracking-tight text-text">
-          ad<span className="text-accent">nova</span>
+        <Link href="/" className="text-xl font-semibold tracking-tight text-text lowercase">
+          reelsimple
         </Link>
 
         <nav className="hidden items-center gap-9 md:flex">
@@ -41,7 +41,7 @@ export function Navbar() {
           href="/contact"
           className="hidden rounded-full bg-text px-5 py-[11px] text-sm font-semibold text-bg transition-colors hover:bg-accent md:inline-block"
         >
-          Launch your campaign
+          Start your project
         </Link>
 
         <button
@@ -71,7 +71,7 @@ export function Navbar() {
               onClick={() => setOpen(false)}
               className="mt-2 rounded-full bg-text px-4 py-2 text-center text-sm font-semibold text-bg"
             >
-              Launch your campaign
+              Start your project
             </Link>
           </Container>
         </div>

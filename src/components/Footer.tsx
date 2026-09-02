@@ -20,7 +20,7 @@ export function Footer() {
             href="/contact"
             className="group inline-flex items-center gap-2 rounded-full bg-coral px-[26px] py-[15px] text-[15px] font-semibold text-white transition-colors hover:bg-[#ff7455]"
           >
-            Launch your campaign
+            Start your project
             <ArrowRight
               size={16}
               className="transition-transform group-hover:translate-x-0.5"
@@ -29,7 +29,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-wrap items-center justify-between gap-3 border-t border-white/12 pt-[22px] text-[13px] text-white/50">
-          <span>adnova © {new Date().getFullYear()}</span>
+          <span>reelsimple © {new Date().getFullYear()}</span>
           <span>{footer.location}</span>
           <span>{footer.email}</span>
         </div>

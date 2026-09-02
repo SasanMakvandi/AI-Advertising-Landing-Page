@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { clients } from "@/lib/content";
 
 export function LogoMarquee() {
@@ -10,13 +11,18 @@ export function LogoMarquee() {
       </p>
       <div className="overflow-hidden border-y border-hair py-[34px]">
         <div className="animate-marquee-slow flex w-max items-center whitespace-nowrap">
-          {items.map((name, i) => (
-            <span
-              key={i}
-              className="px-[46px] font-serif text-xl font-semibold text-text-dim opacity-55"
-            >
-              {name}
-            </span>
+          {items.map((client, i) => (
+            <div key={i} className="flex shrink-0 items-center px-[46px]">
+              <Image
+                src={client.logo}
+                alt={client.name}
+                width={client.width}
+                height={client.height}
+                className={`h-7 w-auto object-contain opacity-55 grayscale transition-all duration-300 hover:opacity-90 ${
+                  client.invert ? "invert" : "hover:grayscale-0"
+                }`}
+              />
+            </div>
           ))}
         </div>
       </div>

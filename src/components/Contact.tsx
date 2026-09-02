@@ -38,11 +38,12 @@ export function Contact() {
           Get in touch
         </div>
         <h2 className="font-serif text-3xl font-semibold tracking-tight text-text sm:text-4xl">
-          Tell us about your next campaign
+          Tell us what you need shot
         </h2>
         <p className="mt-4 text-base leading-relaxed text-text-dim">
-          Share a bit about your brand and what you&apos;re looking to launch
-          — we&apos;ll follow up within a couple of days.
+          Share a bit about your brand and what you need — an ad campaign,
+          listing photos, product shots — we&apos;ll follow up within a
+          couple of days.
         </p>
 
         {status === "success" ? (
@@ -81,7 +82,7 @@ export function Contact() {
               required
               name="message"
               rows={4}
-              placeholder="What are you looking to launch?"
+              placeholder="What are you looking to create?"
               className="resize-none rounded-xl border border-hair bg-bg px-4 py-3 text-sm text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent"
             />
 

@@ -24,9 +24,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Adnova — AI-Engineered, Humanly Directed Advertising",
+  title: "ReelSimple — AI-Engineered, Humanly Directed Production",
   description:
-    "Adnova uses AI to get campaigns moving fast, then a real creative director shapes the work until it looks like your brand made it.",
+    "ReelSimple uses AI to cut the cost of photo and video production, then a real creative director shapes the work until it looks professionally made.",
 };
 
 export default function RootLayout({

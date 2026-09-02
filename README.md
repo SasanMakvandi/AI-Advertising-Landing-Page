@@ -1,6 +1,6 @@
-# adnova
+# ReelSimple
 
-Marketing site for **adnova**, an AI-engineered, humanly-directed advertising studio. Built with Next.js and Tailwind CSS.
+Marketing site for **ReelSimple**, an AI-engineered, humanly-directed production studio that helps cut the cost of photo and video shoots — for ad campaigns, real estate listing photos, product shots, and more. Built with Next.js and Tailwind CSS.
 
 ## Tech stack
 

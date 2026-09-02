@@ -25,9 +25,9 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="max-w-[820px] font-serif text-[clamp(38px,5.6vw,68px)] leading-[1.06] font-semibold tracking-tight text-text"
         >
-          Ads that look hand-made,
+          Content that looks pro,
           <br />
-          made <em className="font-medium text-accent italic">a lot</em> faster.
+          made for <em className="font-medium text-accent italic">a fraction</em> of the cost.
         </motion.h1>
 
         <motion.p
@@ -36,9 +36,9 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mt-6 max-w-[520px] text-lg leading-[1.6] text-text-dim"
         >
-          We use AI to get a campaign moving in a day, then a real creative
-          director shapes it until it looks like your brand made it — not a
-          robot.
+          We use AI to cut what a full shoot costs, then a real creative
+          director shapes it until it looks professionally made — for ads,
+          listing photos, or whatever you need shot.
         </motion.p>
 
         <motion.div
@@ -51,7 +51,7 @@ export function Hero() {
             href="/contact"
             className="group inline-flex items-center gap-2 rounded-full bg-text px-[26px] py-[15px] text-[15px] font-semibold text-bg transition-colors hover:bg-accent"
           >
-            Launch your campaign
+            Start your project
             <ArrowRight
               size={16}
               className="transition-transform group-hover:translate-x-0.5"
