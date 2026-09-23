@@ -44,3 +44,10 @@ next-env.d.ts
 .claude/
 dev-*.log
 run-dev.bat
+
+# prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# user-uploaded content
+/public/uploads/

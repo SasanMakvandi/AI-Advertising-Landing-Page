@@ -130,7 +130,7 @@ export function PhoneReels() {
                   next scroll break.
                 </p>
                 <a
-                  href="/contact"
+                  href="/signup"
                   className="inline-flex items-center gap-1.5 rounded-full bg-white px-[22px] py-3 text-[13.5px] font-semibold text-text"
                 >
                   Start your project

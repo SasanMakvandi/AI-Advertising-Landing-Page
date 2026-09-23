@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { Menu, X } from "lucide-react";
 import { Container } from "./ui/Container";
 import { navLinks } from "@/lib/content";
@@ -10,11 +11,14 @@ import { navLinks } from "@/lib/content";
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session, status } = useSession();
 
   const isActive = (href: string) => {
     const path = href.split("#")[0] || "/";
     return path !== "/" && pathname.startsWith(path);
   };
+
+  const loggedIn = status === "authenticated" && !!session?.user;
 
   return (
     <header className="relative z-50 border-b border-hair">
@@ -37,12 +41,40 @@ export function Navbar() {
           ))}
         </nav>
 
-        <Link
-          href="/contact"
-          className="hidden rounded-full bg-text px-5 py-[11px] text-sm font-semibold text-bg transition-colors hover:bg-accent md:inline-block"
-        >
-          Start your project
-        </Link>
+        <div className="hidden items-center gap-4 md:flex">
+          {loggedIn ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-[14.5px] font-medium text-text-dim transition-colors hover:text-text"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-full bg-text px-5 py-[11px] text-sm font-semibold text-bg transition-colors hover:bg-accent"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-[14.5px] font-medium text-text-dim transition-colors hover:text-text"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-text px-5 py-[11px] text-sm font-semibold text-bg transition-colors hover:bg-accent"
+              >
+                Start your project
+              </Link>
+            </>
+          )}
+        </div>
 
         <button
           aria-label="Toggle menu"
@@ -66,13 +98,44 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/contact"
-              onClick={() => setOpen(false)}
-              className="mt-2 rounded-full bg-text px-4 py-2 text-center text-sm font-semibold text-bg"
-            >
-              Start your project
-            </Link>
+            {loggedIn ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setOpen(false)}
+                  className="text-base text-text-dim hover:text-text"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    signOut({ callbackUrl: "/" });
+                  }}
+                  className="mt-2 rounded-full bg-text px-4 py-2 text-center text-sm font-semibold text-bg"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="text-base text-text-dim hover:text-text"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setOpen(false)}
+                  className="mt-2 rounded-full bg-text px-4 py-2 text-center text-sm font-semibold text-bg"
+                >
+                  Start your project
+                </Link>
+              </>
+            )}
           </Container>
         </div>
       )}

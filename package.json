@@ -6,17 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.33.0",
     "next": "15.5.23",
+    "next-auth": "^5.0.0-beta.32",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -24,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.23",
     "postcss": "^8.5.26",
+    "prisma": "^6.19.3",
     "tailwindcss": "^3.4.19",
     "typescript": "^5"
   }

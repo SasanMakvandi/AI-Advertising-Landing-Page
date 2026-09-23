@@ -48,7 +48,7 @@ export function Hero() {
           className="mt-9 flex flex-wrap items-center gap-[18px]"
         >
           <a
-            href="/contact"
+            href="/signup"
             className="group inline-flex items-center gap-2 rounded-full bg-text px-[26px] py-[15px] text-[15px] font-semibold text-bg transition-colors hover:bg-accent"
           >
             Start your project

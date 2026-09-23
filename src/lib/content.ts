@@ -20,6 +20,127 @@ export const capabilities = [
   "Copywriting",
 ];
 
+export const promptDemo = {
+  eyebrow: "See it in action",
+  headline: "Here's exactly how a video gets made.",
+  steps: [
+    { id: 1, title: "Scripting", provider: "Claude" },
+    { id: 2, title: "Reference images", provider: "Gen-3" },
+    { id: 3, title: "Video generation", provider: "Seedance · Cling" },
+    { id: 4, title: "Audio", provider: "ElevenLabs · optional" },
+    { id: 5, title: "Subtitles", provider: "optional" },
+  ],
+
+  // Step 1 — scripting
+  placeholderPrompt:
+    "A 20-second Instagram Reel for our new ceramic pour-over coffee set — clean, minimal, morning light.",
+  brandNote: "Using your brand profile — warm, minimal, coral accent (edit anytime in Settings)",
+  campaignTweaks: [
+    {
+      label: "Tone",
+      options: ["Playful", "Premium", "Warm", "Urgent"],
+      defaultIndex: 1,
+      allowCustom: true,
+    },
+    {
+      label: "After watching",
+      options: ["Learn more", "Shop now", "Visit site", "Follow us"],
+      defaultIndex: 0,
+      allowCustom: true,
+    },
+  ],
+  formatTweaks: [
+    {
+      label: "Length",
+      options: ["10s", "15s", "20s", "25s", "30s"],
+      defaultIndex: 2,
+    },
+    {
+      label: "Ratio",
+      options: ["9:16", "1:1", "16:9", "4:5"],
+      defaultIndex: 0,
+    },
+  ],
+  continueCta: "Continue",
+  customOptionLabel: "Or type your own",
+  customPlaceholder: "Type your own...",
+  generateScriptCta: "Generate script & voiceover",
+  voiceoverScript:
+    "Some mornings deserve more than instant coffee. Meet the pour-over set built for the ritual — hand-glazed ceramic, a slow bloom, and a cup that tastes like you meant it. Available now.",
+  scenes: [
+    {
+      order: 1,
+      shotType: "Close-up",
+      duration: 5,
+      description:
+        "Slow push-in on the pour-over set, steam curling upward, soft morning light through a window.",
+      voiceover: "Some mornings deserve more than instant coffee.",
+      gradient: "linear-gradient(135deg, #4B4EFF, #211E19)",
+    },
+    {
+      order: 2,
+      shotType: "Wide",
+      duration: 5,
+      description: "Water arcing into the dripper in slow motion, coffee blooming beneath.",
+      voiceover: "Meet the pour-over set built for the ritual.",
+      gradient: "linear-gradient(135deg, #FF5C39, #4B4EFF)",
+    },
+    {
+      order: 3,
+      shotType: "Lifestyle",
+      duration: 5,
+      description: "Hands wrapped around the finished mug at a sunlit table.",
+      voiceover: "A slow bloom. A cup that tastes like you meant it.",
+      gradient: "linear-gradient(135deg, #E4DECF, #FF5C39)",
+    },
+    {
+      order: 4,
+      shotType: "Macro",
+      duration: 5,
+      description: "Detail shot of the ceramic glaze and texture, logo subtly in frame.",
+      voiceover: "Hand-glazed ceramic. Available now.",
+      gradient: "linear-gradient(135deg, #211E19, #4B4EFF)",
+    },
+  ],
+
+  // Step 2 — reference images
+  refImageNote:
+    "Physical product? Include a size-reference photo (a coin, a hand) so proportions stay accurate once it's generated.",
+  refImageGateQuestion: "Happy with these as the visual anchor for each scene?",
+  refImageRedoNote: "Sends you back to review the script (goals, branding, campaign, format) before we try again.",
+
+  // Step 3 — video generation
+  videoProviders: [
+    { name: "Seedance", limit: "up to 30s per clip — longer videos are stitched from multiple clips" },
+    { name: "Cling", limit: "up to 15s per clip" },
+  ],
+  videoGateQuestion: "Happy with the generated video?",
+  videoRedoNote: "Sends you back to the reference images — redoing this step uses additional generation credits.",
+
+  // Step 4 — audio (optional)
+  voices: [
+    { name: "Aria", style: "Warm & conversational" },
+    { name: "Atlas", style: "Confident & bold" },
+    { name: "Nova", style: "Upbeat & playful" },
+    { name: "Sable", style: "Calm & premium" },
+  ],
+  audioGateQuestion: "Sound good?",
+
+  // Step 5 — subtitles (optional)
+  subtitleStyles: ["Bold & centered", "Minimal lower-third", "Karaoke highlight"],
+  subtitleGateQuestion: "Look good?",
+
+  doneHeadline: "Your video is ready.",
+  doneNote: "This walkthrough is a preview of the real flow — nothing above was actually generated.",
+  finalCta: "Start a real project",
+
+  assetsPanelTitle: "Your assets",
+  scriptAssetLabel: "Script",
+  picturesAssetLabel: "Pictures",
+  videoAssetLabel: "Video",
+  notGeneratedYet: "Not generated yet",
+};
+
 type Project = {
   tag: string;
   title: string;

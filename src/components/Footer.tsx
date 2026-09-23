@@ -17,7 +17,7 @@ export function Footer() {
 
         <div className="mt-8">
           <a
-            href="/contact"
+            href="/signup"
             className="group inline-flex items-center gap-2 rounded-full bg-coral px-[26px] py-[15px] text-[15px] font-semibold text-white transition-colors hover:bg-[#ff7455]"
           >
             Start your project

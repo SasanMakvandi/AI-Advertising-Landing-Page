@@ -8,22 +8,44 @@ Marketing site for **ReelSimple**, an AI-engineered, humanly-directed production
 - [Tailwind CSS](https://tailwindcss.com) for styling
 - [Framer Motion](https://www.framer.com/motion/) for scroll and interaction animations
 - [Lucide](https://lucide.dev) for icons
+- [Auth.js (next-auth v5)](https://authjs.dev) + [Prisma](https://www.prisma.io) + SQLite for accounts
 
 ## Pages
 
 | Route | Description |
 | --- | --- |
-| `/` | Home — hero with a draggable before/after reveal, capability strip, work showcase, client logos, phone/reel feed, and pricing |
+| `/` | Home — hero with a draggable before/after reveal, capability strip, work showcase, client logos, phone/reel feed, pricing, and the interactive generation-flow demo |
 | `/about` | Studio story, working principles, and team |
 | `/what-we-do` | Step-by-step process, from brief to launch |
 | `/contact` | Contact form, wired to `/api/contact` |
+| `/signup` | Create an account (name, email, password, occupation, company, branding) |
+| `/login` | Log in to an existing account |
+| `/dashboard` | Protected — redirects to `/login` if signed out. Shows the user's content gallery. |
 
 ## Getting started
 
-Install dependencies and start the dev server:
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Create a `.env` file in the project root (not committed) with:
+
+```bash
+DATABASE_URL="file:./dev.db"
+AUTH_SECRET="<random string — generate with: openssl rand -base64 32>"
+```
+
+Set up the database (creates `prisma/dev.db` from the committed migrations):
+
+```bash
+npx prisma migrate deploy
+```
+
+Then start the dev server:
+
+```bash
 npm run dev
 ```
 
@@ -49,6 +71,17 @@ Site copy (nav labels, project case studies, pricing tiers, team bios, etc.) liv
 ## Contact form
 
 Submissions POST to `src/app/api/contact/route.ts`, which currently logs the payload. Wire this up to an email or CRM provider (e.g. [Resend](https://resend.com)) before going live.
+
+## Accounts & database
+
+Real signup/login, backed by Prisma + a local SQLite file (`prisma/dev.db`, not committed — only the migrations under `prisma/migrations/` are):
+
+- `prisma/schema.prisma` — `User` (name, email, hashed password, occupation, company, branding) and `GalleryItem` models
+- `src/auth.ts` — Auth.js config (Credentials provider, JWT sessions, bcrypt password check)
+- `src/app/api/signup/route.ts` — creates a user (bcrypt-hashes the password, rejects duplicate emails)
+- `src/app/dashboard/page.tsx` — server-rendered, redirects to `/login` if there's no session; lists the signed-in user's `GalleryItem` rows
+
+**Not done yet:** actual content generation (the homepage demo is still a static walkthrough), so the gallery has nothing to show until that's wired up. Before deploying anywhere beyond local dev, swap SQLite for a hosted Postgres (e.g. Supabase or Neon) — a SQLite file doesn't survive serverless deploys (Vercel) or multiple instances.
 
 ## Scripts
 

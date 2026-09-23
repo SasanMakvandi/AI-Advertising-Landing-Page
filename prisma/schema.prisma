@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String        @unique
+  passwordHash String
+  organization String?
+  role         String?
+  slogan       String?
+  logoUrl      String?
+  createdAt    DateTime      @default(now())
+  galleryItems GalleryItem[]
+  projects     Project[]
+}
+
+model GalleryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  projectId String?  @unique
+  project   Project? @relation(fields: [projectId], references: [id])
+}
+
+// A single creation session: intake -> brief -> (concepts) -> script.
+// Statuses: draft -> extracting_brief -> brief_ready -> generating_script -> script_ready
+model Project {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  flowType     String       @default("structured")
+  status       String       @default("draft")
+  prompt       String
+  wantsVoiceover  Boolean   @default(true)
+  wantsSubtitles  Boolean   @default(false)
+  duration     Int          @default(20)
+  aspectRatio  String       @default("9:16")
+  assetUrls    String?
+  resolution   String       @default("1080p")
+  negativePrompt String?
+  toneReferenceUrls String?
+  briefJson    String?
+  conceptsJson String?
+  scriptJson   String?
+  revisionCount Int         @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  galleryItem  GalleryItem?
+}
