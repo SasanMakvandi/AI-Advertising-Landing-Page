@@ -50,11 +50,18 @@ export const ScriptSchema = z.object({
 export type Script = z.infer<typeof ScriptSchema>;
 
 // Client-facing superset of a scene/script that also carries a generated
-// reference image URL. Kept separate from SceneSchema/ScriptSchema above so
-// Claude's structured-output calls (which use those schemas directly) are
-// never asked to invent an imageUrl — only our own code ever sets one.
+// reference image and/or video. Kept separate from SceneSchema/ScriptSchema
+// above so Claude's structured-output calls (which use those schemas
+// directly) are never asked to invent an imageUrl/videoUrl — only our own
+// code ever sets those.
 export const SceneWithImageSchema = SceneSchema.extend({
   imageUrl: z.string().nullable().optional(),
+  videoUrl: z.string().nullable().optional(),
+  // Set while a Seedance job is in flight for this scene; cleared once it
+  // lands in videoUrl (or fails). Lets the status-poll route resume
+  // tracking a job across separate requests.
+  videoJobId: z.string().nullable().optional(),
+  videoStatus: z.enum(["queued", "in_progress", "completed", "failed"]).nullable().optional(),
 });
 
 export const ScriptWithImagesSchema = ScriptSchema.extend({

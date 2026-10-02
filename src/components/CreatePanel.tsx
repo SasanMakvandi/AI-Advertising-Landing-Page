@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Upload,
+  Video,
   Wand2,
   X,
 } from "lucide-react";
@@ -31,6 +32,15 @@ type PickedFile = { file: File; url: string };
 const DURATION_OPTIONS = [10, 15, 20, 25, 30];
 const RATIO_OPTIONS = ["9:16", "1:1", "16:9", "4:5"];
 const RESOLUTION_OPTIONS = ["720p", "1080p", "4K"];
+
+const VIDEO_RESOLUTION_OPTIONS = ["480p", "720p", "1080p"] as const;
+// $0.01 per ApiFrame credit, credits-per-second for Seedance 2 by resolution.
+const VIDEO_CREDITS_PER_SECOND: Record<string, number> = { "480p": 8, "720p": 19, "1080p": 43 };
+function estimateVideoCost(scenes: { duration: number }[], resolution: string) {
+  const perSecond = VIDEO_CREDITS_PER_SECOND[resolution] ?? VIDEO_CREDITS_PER_SECOND["480p"];
+  const totalSeconds = scenes.reduce((sum, s) => sum + s.duration, 0);
+  return (totalSeconds * perSecond * 0.01).toFixed(2);
+}
 
 // Avoids the "useLayoutEffect does nothing on the server" warning during SSR.
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -502,6 +512,11 @@ export function CreatePanel() {
   const [isFinalized, setIsFinalized] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageProgress, setImageProgress] = useState({ done: 0, total: 0 });
+  const [videoResolution, setVideoResolution] = useState<(typeof VIDEO_RESOLUTION_OPTIONS)[number]>(
+    "480p"
+  );
+  const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
+  const videoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState("");
 
   function addFiles(setter: typeof setAssetFiles, files: File[]) {
@@ -521,6 +536,14 @@ export function CreatePanel() {
   // in flight — Claude's adaptive thinking frequently streams back nothing
   // for a short task, so this keeps the wait from looking stalled.
   useEffect(() => () => stopStatusTicker(), []);
+  useEffect(() => () => stopVideoPolling(), []);
+
+  function stopVideoPolling() {
+    if (videoPollRef.current) {
+      clearInterval(videoPollRef.current);
+      videoPollRef.current = null;
+    }
+  }
 
   function startStatusTicker() {
     setStatusIndex(0);
@@ -561,6 +584,9 @@ export function CreatePanel() {
     setIsFinalized(false);
     setIsGeneratingImages(false);
     setImageProgress({ done: 0, total: 0 });
+    setVideoResolution("480p");
+    stopVideoPolling();
+    setIsGeneratingVideos(false);
     setError("");
   }
 
@@ -751,6 +777,81 @@ export function CreatePanel() {
       setError(err instanceof Error ? err.message : "Couldn't generate reference images — please try again.");
     } finally {
       setIsGeneratingImages(false);
+    }
+  }
+
+  async function handleGenerateVideos() {
+    if (!script) return;
+    setError("");
+    setIsGeneratingVideos(true);
+
+    if (isMock) {
+      const stages: Array<"queued" | "in_progress" | "completed"> = [
+        "queued",
+        "in_progress",
+        "completed",
+      ];
+      for (const videoStatus of stages) {
+        await wait(900);
+        setScript((prev) =>
+          prev
+            ? {
+                ...prev,
+                scenes: prev.scenes.map((s) => ({
+                  ...s,
+                  videoStatus,
+                  // Mock mode never has a real file — this sentinel just
+                  // flips the UI's "has a video" check to true so the
+                  // preview placeholder renders.
+                  videoUrl: videoStatus === "completed" ? "mock-preview" : s.videoUrl,
+                })),
+              }
+            : prev
+        );
+      }
+      setIsGeneratingVideos(false);
+      return;
+    }
+
+    if (!projectId) return;
+
+    try {
+      const res = await fetch("/api/generate/videos/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, script, resolution: videoResolution }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.script) setScript(body.script);
+      if (!res.ok && !body.script) {
+        throw new Error(body.error || "Couldn't start video generation — please try again.");
+      }
+      if (body.error) setError(body.error);
+
+      stopVideoPolling();
+      videoPollRef.current = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/generate/videos/status?projectId=${projectId}`);
+          const pollBody = await pollRes.json().catch(() => ({}));
+          if (!pollRes.ok) throw new Error(pollBody.error || "Couldn't check video status");
+          setScript(pollBody.script);
+          const stillPending = pollBody.script?.scenes?.some(
+            (s: { videoJobId?: string | null }) => s.videoJobId
+          );
+          if (!stillPending) {
+            stopVideoPolling();
+            setIsGeneratingVideos(false);
+            router.refresh();
+          }
+        } catch (err) {
+          stopVideoPolling();
+          setIsGeneratingVideos(false);
+          setError(err instanceof Error ? err.message : "Couldn't check video status");
+        }
+      }, 8000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't start video generation — please try again.");
+      setIsGeneratingVideos(false);
     }
   }
 
@@ -1262,6 +1363,49 @@ export function CreatePanel() {
                   )}
                 </button>
 
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateVideos}
+                    disabled={scenesLocked || isGeneratingVideos}
+                    className="inline-flex items-center gap-2 rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
+                  >
+                    {isGeneratingVideos ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        Generating video…
+                      </>
+                    ) : (
+                      <>
+                        <Video size={13} />
+                        {script.scenes.some((s) => s.videoUrl)
+                          ? "Regenerate scene videos"
+                          : "Generate scene videos"}
+                      </>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {VIDEO_RESOLUTION_OPTIONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={scenesLocked || isGeneratingVideos}
+                        onClick={() => setVideoResolution(r)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
+                          videoResolution === r
+                            ? "border-text bg-text text-bg"
+                            : "border-hair text-text-dim hover:border-text/30 hover:text-text"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-[11.5px] text-text-dim">
+                    ~${estimateVideoCost(script.scenes, videoResolution)}
+                  </span>
+                </div>
+
                 <div className="flex flex-col gap-2.5">
                   {script.scenes.map((scene, i) => (
                     <div
@@ -1271,7 +1415,25 @@ export function CreatePanel() {
                       }`}
                     >
                       <div className="relative mb-2 aspect-video w-full overflow-hidden rounded-lg bg-panel-2">
-                        {scene.imageUrl ? (
+                        {scene.videoUrl ? (
+                          isMock ? (
+                            <div
+                              className="flex h-full w-full items-center justify-center text-center text-[11px] font-semibold text-white"
+                              style={{ background: scene.imageUrl || undefined }}
+                            >
+                              Preview — video would appear here
+                            </div>
+                          ) : (
+                            <video src={scene.videoUrl} controls className="h-full w-full object-cover" />
+                          )
+                        ) : scene.videoStatus === "queued" || scene.videoStatus === "in_progress" ? (
+                          <div className="flex h-full flex-col items-center justify-center gap-1.5 text-text-dim/60">
+                            <Loader2 size={18} className="animate-spin" />
+                            <span className="text-[10px] font-semibold tracking-wide uppercase">
+                              {scene.videoStatus === "queued" ? "Queued" : "Generating…"}
+                            </span>
+                          </div>
+                        ) : scene.imageUrl ? (
                           isMock ? (
                             <div className="h-full w-full" style={{ background: scene.imageUrl }} />
                           ) : (
@@ -1290,6 +1452,11 @@ export function CreatePanel() {
                             ) : (
                               <ImageIcon size={18} />
                             )}
+                          </div>
+                        )}
+                        {scene.videoStatus === "failed" && (
+                          <div className="absolute bottom-1 left-1 rounded bg-coral/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            Video failed
                           </div>
                         )}
                       </div>
