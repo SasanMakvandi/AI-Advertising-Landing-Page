@@ -32,9 +32,18 @@ export async function generateSceneImage({
   size = "1024x1024",
   quality = "medium",
 }: GenerateSceneImageInput): Promise<Buffer> {
-  const apiKey = process.env.COMETAPI_KEY;
+  const apiKey = process.env.COMETAPI_KEY?.trim();
   if (!apiKey) {
     throw new Error("COMETAPI_KEY is not configured");
+  }
+  // Header values must be Latin-1 — a stray character from a bad copy/paste
+  // into the env var (e.g. a smart quote or bullet) throws an opaque
+  // "ByteString" error deep in fetch(). Catch it here with an actionable
+  // message instead.
+  if (/[^\x00-\xFF]/.test(apiKey)) {
+    throw new Error(
+      "COMETAPI_KEY contains a character that isn't valid in an HTTP header — it was likely corrupted when pasted into Vercel's environment variables. Re-copy and re-paste the key value."
+    );
   }
 
   if (referenceImageUrl) {
