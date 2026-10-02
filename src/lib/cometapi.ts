@@ -1,0 +1,76 @@
+import { readFile } from "fs/promises";
+
+const COMETAPI_BASE = "https://api.cometapi.com/v1";
+
+type GenerateSceneImageInput = {
+  prompt: string;
+  // Absolute filesystem path to a local reference upload, if the project has
+  // one. When present we use the image-editing model (gpt-image-2) so the
+  // result is guided by it; otherwise we fall back to pure text-to-image.
+  referenceImagePath?: string | null;
+  size?: string;
+  quality?: "low" | "medium" | "high";
+};
+
+async function parseImageResponse(res: Response, label: string): Promise<Buffer> {
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CometAPI ${label} failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+  const json = await res.json();
+  const b64 = json?.data?.[0]?.b64_json;
+  if (!b64) {
+    throw new Error(`CometAPI ${label} response did not include image data`);
+  }
+  return Buffer.from(b64, "base64");
+}
+
+// Generates one scene's reference image via CometAPI. Uses gpt-image-2
+// (image editing, guided by an uploaded reference photo) when a reference
+// image is available, otherwise gpt-image-1 (pure text-to-image).
+export async function generateSceneImage({
+  prompt,
+  referenceImagePath,
+  size = "1024x1024",
+  quality = "medium",
+}: GenerateSceneImageInput): Promise<Buffer> {
+  const apiKey = process.env.COMETAPI_KEY;
+  if (!apiKey) {
+    throw new Error("COMETAPI_KEY is not configured");
+  }
+
+  if (referenceImagePath) {
+    const imageBuffer = await readFile(referenceImagePath);
+    const form = new FormData();
+    form.set("model", "gpt-image-2");
+    form.set("prompt", prompt);
+    form.set("size", size);
+    form.set("quality", quality);
+    form.set("response_format", "b64_json");
+    form.set("image", new Blob([imageBuffer]), "reference.png");
+
+    const res = await fetch(`${COMETAPI_BASE}/images/edits`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    return parseImageResponse(res, "image edit");
+  }
+
+  const res = await fetch(`${COMETAPI_BASE}/images/generations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      size,
+      quality,
+      n: 1,
+      response_format: "b64_json",
+    }),
+  });
+  return parseImageResponse(res, "image generation");
+}

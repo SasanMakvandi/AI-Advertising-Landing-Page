@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ScriptSchema } from "@/lib/generation-schemas";
+import { ScriptWithImagesSchema } from "@/lib/generation-schemas";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const projectId = body?.projectId as string | undefined;
-  const scriptInput = ScriptSchema.safeParse(body?.script);
+  const scriptInput = ScriptWithImagesSchema.safeParse(body?.script);
 
   if (!projectId || !scriptInput.success) {
     return new Response(JSON.stringify({ error: "Missing or invalid project or script" }), {

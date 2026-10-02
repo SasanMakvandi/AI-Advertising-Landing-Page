@@ -35,6 +35,8 @@ export const SceneSchema = z.object({
     .describe("The voiceover line spoken during this scene, or null if the video has no voiceover"),
 });
 
+export type Scene = z.infer<typeof SceneSchema>;
+
 export const ScriptSchema = z.object({
   voiceoverScript: z
     .string()
@@ -46,3 +48,18 @@ export const ScriptSchema = z.object({
 });
 
 export type Script = z.infer<typeof ScriptSchema>;
+
+// Client-facing superset of a scene/script that also carries a generated
+// reference image URL. Kept separate from SceneSchema/ScriptSchema above so
+// Claude's structured-output calls (which use those schemas directly) are
+// never asked to invent an imageUrl — only our own code ever sets one.
+export const SceneWithImageSchema = SceneSchema.extend({
+  imageUrl: z.string().nullable().optional(),
+});
+
+export const ScriptWithImagesSchema = ScriptSchema.extend({
+  scenes: z.array(SceneWithImageSchema),
+});
+
+export type SceneWithImage = z.infer<typeof SceneWithImageSchema>;
+export type ScriptWithImages = z.infer<typeof ScriptWithImagesSchema>;

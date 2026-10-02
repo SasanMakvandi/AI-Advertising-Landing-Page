@@ -9,6 +9,7 @@ import {
   Captions,
   Check,
   ChevronDown,
+  Image as ImageIcon,
   Loader2,
   Mic,
   Minus,
@@ -21,7 +22,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import type { Brief, Script } from "@/lib/generation-schemas";
+import type { Brief, Script, ScriptWithImages } from "@/lib/generation-schemas";
 import { MAX_REVISIONS } from "@/lib/generation-schemas";
 
 type Stage = "prompt" | "extracting" | "brief" | "generating" | "done";
@@ -85,7 +86,16 @@ const MOCK_BRIEF: Brief = {
   ctaIntent: "Shop now",
 };
 
-const MOCK_SCRIPT: Script = {
+// Preview mode never calls CometAPI — these gradients stand in for
+// generated scene images, same style as the homepage demo and gallery cards.
+const MOCK_IMAGE_GRADIENTS = [
+  "linear-gradient(135deg, #4B4EFF, #211E19)",
+  "linear-gradient(135deg, #FF5C39, #4B4EFF)",
+  "linear-gradient(135deg, #E4DECF, #FF5C39)",
+  "linear-gradient(135deg, #211E19, #4B4EFF)",
+];
+
+const MOCK_SCRIPT: ScriptWithImages = {
   voiceoverScript:
     "Some mornings deserve more than instant coffee. Meet the pour-over set built for the ritual — hand-glazed ceramic, a slow bloom, and a cup that tastes like you meant it. Available now.",
   scenes: [
@@ -131,7 +141,8 @@ function wait(ms: number) {
 async function streamGenerate<T extends { type: "result" }>(
   url: string,
   body: unknown,
-  onThinking: (chunk: string) => void
+  onThinking: (chunk: string) => void,
+  onProgress?: (event: Record<string, unknown>) => void
 ): Promise<T> {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const res = await fetch(url, {
@@ -155,6 +166,8 @@ async function streamGenerate<T extends { type: "result" }>(
     const event = JSON.parse(line);
     if (event.type === "thinking") {
       onThinking(event.text);
+    } else if (event.type === "progress") {
+      onProgress?.(event);
     } else if (event.type === "error") {
       throw new Error(event.message);
     } else {
@@ -478,7 +491,7 @@ export function CreatePanel() {
   const [toneRefFiles, setToneRefFiles] = useState<PickedFile[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [brief, setBrief] = useState<Brief | null>(null);
-  const [script, setScript] = useState<Script | null>(null);
+  const [script, setScript] = useState<ScriptWithImages | null>(null);
   const [isMock, setIsMock] = useState(false);
   const [thinking, setThinking] = useState("");
   const [statusIndex, setStatusIndex] = useState(0);
@@ -487,6 +500,8 @@ export function CreatePanel() {
   const [revisionsLeft, setRevisionsLeft] = useState(MAX_REVISIONS);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isFinalized, setIsFinalized] = useState(false);
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [imageProgress, setImageProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
 
   function addFiles(setter: typeof setAssetFiles, files: File[]) {
@@ -544,6 +559,8 @@ export function CreatePanel() {
     setRevisionsLeft(MAX_REVISIONS);
     setIsFinalizing(false);
     setIsFinalized(false);
+    setIsGeneratingImages(false);
+    setImageProgress({ done: 0, total: 0 });
     setError("");
   }
 
@@ -686,6 +703,57 @@ export function CreatePanel() {
     }
   }
 
+  async function handleGenerateImages() {
+    if (!script) return;
+    setError("");
+    setIsGeneratingImages(true);
+    setImageProgress({ done: 0, total: script.scenes.length });
+
+    if (isMock) {
+      for (let i = 0; i < script.scenes.length; i++) {
+        await wait(700);
+        const gradient = MOCK_IMAGE_GRADIENTS[i % MOCK_IMAGE_GRADIENTS.length];
+        setScript((prev) =>
+          prev
+            ? { ...prev, scenes: prev.scenes.map((s, idx) => (idx === i ? { ...s, imageUrl: gradient } : s)) }
+            : prev
+        );
+        setImageProgress({ done: i + 1, total: script.scenes.length });
+      }
+      setIsGeneratingImages(false);
+      return;
+    }
+
+    if (!projectId) return;
+
+    try {
+      const result = await streamGenerate<{ type: "result"; script: ScriptWithImages }>(
+        "/api/generate/images",
+        { projectId, script },
+        () => {},
+        (event) => {
+          const sceneOrder = event.sceneOrder as number;
+          const imageUrl = event.imageUrl as string;
+          setImageProgress({ done: event.done as number, total: event.total as number });
+          setScript((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  scenes: prev.scenes.map((s) => (s.order === sceneOrder ? { ...s, imageUrl } : s)),
+                }
+              : prev
+          );
+        }
+      );
+      setScript(result.script);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't generate reference images — please try again.");
+    } finally {
+      setIsGeneratingImages(false);
+    }
+  }
+
   async function handleFinalize() {
     if (!script) return;
     setError("");
@@ -721,10 +789,10 @@ export function CreatePanel() {
     setBrief((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
-  function updateScene<K extends keyof Script["scenes"][number]>(
+  function updateScene<K extends keyof ScriptWithImages["scenes"][number]>(
     index: number,
     key: K,
-    value: Script["scenes"][number][K]
+    value: ScriptWithImages["scenes"][number][K]
   ) {
     setScript((prev) => {
       if (!prev) return prev;
@@ -1173,6 +1241,27 @@ export function CreatePanel() {
                   Changes apply next time you revise.
                 </p>
 
+                <button
+                  type="button"
+                  onClick={handleGenerateImages}
+                  disabled={scenesLocked || isGeneratingImages}
+                  className="mb-3 inline-flex items-center gap-2 self-start rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
+                >
+                  {isGeneratingImages ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      {`Generating ${imageProgress.done}/${imageProgress.total}…`}
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon size={13} />
+                      {script.scenes.some((s) => s.imageUrl)
+                        ? "Regenerate reference images"
+                        : "Generate reference images"}
+                    </>
+                  )}
+                </button>
+
                 <div className="flex flex-col gap-2.5">
                   {script.scenes.map((scene, i) => (
                     <div
@@ -1181,6 +1270,29 @@ export function CreatePanel() {
                         scenesLocked ? "opacity-60" : ""
                       }`}
                     >
+                      <div className="relative mb-2 aspect-video w-full overflow-hidden rounded-lg bg-panel-2">
+                        {scene.imageUrl ? (
+                          isMock ? (
+                            <div className="h-full w-full" style={{ background: scene.imageUrl }} />
+                          ) : (
+                            <Image
+                              src={scene.imageUrl}
+                              alt={`Scene ${scene.order} reference`}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          )
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-text-dim/40">
+                            {isGeneratingImages ? (
+                              <Loader2 size={18} className="animate-spin" />
+                            ) : (
+                              <ImageIcon size={18} />
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="mb-2 flex items-center gap-2">
                         <span className="font-mono text-[11px] font-medium text-accent">
                           {String(scene.order).padStart(2, "0")}
