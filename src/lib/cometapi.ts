@@ -44,12 +44,15 @@ export async function generateSceneImage({
     }
     const imageBuffer = Buffer.from(await refRes.arrayBuffer());
 
+    // Note: unlike the generations endpoint below, the edits endpoint
+    // rejects "response_format" outright on some CometAPI backend instances
+    // ("Unknown parameter") — it already returns b64_json by default per
+    // CometAPI's own docs, so we just omit it here.
     const form = new FormData();
     form.set("model", "gpt-image-2");
     form.set("prompt", prompt);
     form.set("size", size);
     form.set("quality", quality);
-    form.set("response_format", "b64_json");
     form.set("image", new Blob([imageBuffer]), "reference.png");
 
     const res = await fetch(`${COMETAPI_BASE}/images/edits`, {
