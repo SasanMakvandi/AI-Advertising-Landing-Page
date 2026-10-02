@@ -66,6 +66,8 @@ export const SceneWithImageSchema = SceneSchema.extend({
 
 export const ScriptWithImagesSchema = ScriptSchema.extend({
   scenes: z.array(SceneWithImageSchema),
+  // The scene videos concatenated into one continuous clip, once stitched.
+  finalVideoUrl: z.string().nullable().optional(),
 });
 
 export type SceneWithImage = z.infer<typeof SceneWithImageSchema>;

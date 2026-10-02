@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getVideoJobStatus } from "@/lib/apiframe";
@@ -49,7 +49,20 @@ export async function GET(request: Request) {
             contentType: "video/mp4",
           });
           changed = true;
-          return { ...scene, videoUrl: blob.url, videoJobId: null, videoStatus: "completed" as const };
+          // The reference image was only ever needed as this video's
+          // starting frame — once the video exists, drop it to save space.
+          if (scene.imageUrl) {
+            await del(scene.imageUrl).catch((err) => {
+              console.error(`couldn't delete reference image for scene ${scene.order}:`, err);
+            });
+          }
+          return {
+            ...scene,
+            imageUrl: null,
+            videoUrl: blob.url,
+            videoJobId: null,
+            videoStatus: "completed" as const,
+          };
         }
 
         if (jobStatus.status === "FAILED") {

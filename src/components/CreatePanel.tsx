@@ -19,6 +19,8 @@ import {
   SlidersHorizontal,
   Sparkles,
   Upload,
+  Download,
+  Film,
   Video,
   Wand2,
   X,
@@ -143,6 +145,10 @@ const MOCK_SCRIPT: ScriptWithImages = {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function downloadHref(url: string, filename: string) {
+  return `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 }
 
 // Reads an NDJSON stream of {type:"thinking",text} / {type:"result",...} /
@@ -516,6 +522,7 @@ export function CreatePanel() {
     "480p"
   );
   const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
+  const [isStitching, setIsStitching] = useState(false);
   const videoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState("");
 
@@ -587,6 +594,7 @@ export function CreatePanel() {
     setVideoResolution("480p");
     stopVideoPolling();
     setIsGeneratingVideos(false);
+    setIsStitching(false);
     setError("");
   }
 
@@ -852,6 +860,37 @@ export function CreatePanel() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't start video generation — please try again.");
       setIsGeneratingVideos(false);
+    }
+  }
+
+  async function handleStitchVideos() {
+    if (!script) return;
+    setError("");
+    setIsStitching(true);
+
+    if (isMock) {
+      await wait(1200);
+      setScript((prev) => (prev ? { ...prev, finalVideoUrl: "mock-preview" } : prev));
+      setIsStitching(false);
+      return;
+    }
+
+    if (!projectId) return;
+
+    try {
+      const res = await fetch("/api/generate/videos/stitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, script }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't stitch the scenes together.");
+      setScript(body.script);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't stitch the scenes together.");
+    } finally {
+      setIsStitching(false);
     }
   }
 
@@ -1406,6 +1445,50 @@ export function CreatePanel() {
                   </span>
                 </div>
 
+                {script.scenes.every((s) => s.videoUrl) && (
+                  <div className="mb-3">
+                    <button
+                      type="button"
+                      onClick={handleStitchVideos}
+                      disabled={scenesLocked || isStitching || isGeneratingVideos}
+                      className="inline-flex items-center gap-2 rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
+                    >
+                      {isStitching ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          Stitching scenes together…
+                        </>
+                      ) : (
+                        <>
+                          <Film size={13} />
+                          {script.finalVideoUrl ? "Re-stitch final video" : "Stitch into one video"}
+                        </>
+                      )}
+                    </button>
+
+                    {script.finalVideoUrl && (
+                      <div className="mt-3 overflow-hidden rounded-lg border border-hair bg-panel-2">
+                        {isMock ? (
+                          <div className="flex aspect-video items-center justify-center text-[12px] font-semibold text-text-dim">
+                            Preview — final video would appear here
+                          </div>
+                        ) : (
+                          <video src={script.finalVideoUrl} controls className="w-full" />
+                        )}
+                        {!isMock && (
+                          <a
+                            href={downloadHref(script.finalVideoUrl, "final-video.mp4")}
+                            className="flex items-center justify-center gap-1.5 border-t border-hair px-3 py-2 text-[12px] font-semibold text-text-dim transition-colors hover:text-text"
+                          >
+                            <Download size={12} />
+                            Download final video
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-2.5">
                   {script.scenes.map((scene, i) => (
                     <div
@@ -1458,6 +1541,15 @@ export function CreatePanel() {
                           <div className="absolute bottom-1 left-1 rounded bg-coral/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                             Video failed
                           </div>
+                        )}
+                        {scene.videoUrl && !isMock && (
+                          <a
+                            href={downloadHref(scene.videoUrl, `scene-${scene.order}.mp4`)}
+                            aria-label={`Download scene ${scene.order} video`}
+                            className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
+                          >
+                            <Download size={12} />
+                          </a>
                         )}
                       </div>
                       <div className="mb-2 flex items-center gap-2">
