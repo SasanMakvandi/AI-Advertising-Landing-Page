@@ -1,13 +1,11 @@
-import { readFile } from "fs/promises";
-
 const COMETAPI_BASE = "https://api.cometapi.com/v1";
 
 type GenerateSceneImageInput = {
   prompt: string;
-  // Absolute filesystem path to a local reference upload, if the project has
+  // URL of an uploaded reference image (Vercel Blob), if the project has
   // one. When present we use the image-editing model (gpt-image-2) so the
   // result is guided by it; otherwise we fall back to pure text-to-image.
-  referenceImagePath?: string | null;
+  referenceImageUrl?: string | null;
   size?: string;
   quality?: "low" | "medium" | "high";
 };
@@ -30,7 +28,7 @@ async function parseImageResponse(res: Response, label: string): Promise<Buffer>
 // image is available, otherwise gpt-image-1 (pure text-to-image).
 export async function generateSceneImage({
   prompt,
-  referenceImagePath,
+  referenceImageUrl,
   size = "1024x1024",
   quality = "medium",
 }: GenerateSceneImageInput): Promise<Buffer> {
@@ -39,8 +37,13 @@ export async function generateSceneImage({
     throw new Error("COMETAPI_KEY is not configured");
   }
 
-  if (referenceImagePath) {
-    const imageBuffer = await readFile(referenceImagePath);
+  if (referenceImageUrl) {
+    const refRes = await fetch(referenceImageUrl);
+    if (!refRes.ok) {
+      throw new Error(`Couldn't fetch reference image (${refRes.status})`);
+    }
+    const imageBuffer = Buffer.from(await refRes.arrayBuffer());
+
     const form = new FormData();
     form.set("model", "gpt-image-2");
     form.set("prompt", prompt);

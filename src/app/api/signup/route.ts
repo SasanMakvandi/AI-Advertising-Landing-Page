@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import path from "path";
-import { mkdir, writeFile } from "fs/promises";
+import { put } from "@vercel/blob";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
@@ -46,13 +46,11 @@ export async function POST(request: Request) {
     }
 
     const ext = path.extname(logo.name) || `.${logo.type.split("/")[1]}`;
-    const filename = `${randomUUID()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "logos");
-    await mkdir(uploadDir, { recursive: true });
-
-    const buffer = Buffer.from(await logo.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
-    logoUrl = `/uploads/logos/${filename}`;
+    const blob = await put(`logos/${randomUUID()}${ext}`, logo, {
+      access: "public",
+      contentType: logo.type,
+    });
+    logoUrl = blob.url;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

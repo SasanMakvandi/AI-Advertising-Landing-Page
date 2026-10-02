@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
-import path from "path";
-import { mkdir, writeFile } from "fs/promises";
+import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { generateSceneImage } from "@/lib/cometapi";
@@ -39,10 +38,7 @@ export async function POST(request: Request) {
 
   const assetUrls: string[] = project.assetUrls ? JSON.parse(project.assetUrls) : [];
   const toneUrls: string[] = project.toneReferenceUrls ? JSON.parse(project.toneReferenceUrls) : [];
-  const referenceUrl = assetUrls[0] || toneUrls[0] || null;
-  const referenceImagePath = referenceUrl
-    ? path.join(process.cwd(), "public", referenceUrl)
-    : null;
+  const referenceImageUrl = assetUrls[0] || toneUrls[0] || null;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -52,25 +48,23 @@ export async function POST(request: Request) {
       }
 
       try {
-        const uploadDir = path.join(process.cwd(), "public", "uploads", "scene-images");
-        await mkdir(uploadDir, { recursive: true });
-
         const scenesWithImages: (Scene & { imageUrl: string | null })[] = [];
         for (const scene of script.scenes) {
           const prompt = buildScenePrompt(scene, brief, project.aspectRatio);
           const imageBuffer = await generateSceneImage({
             prompt,
-            referenceImagePath,
+            referenceImageUrl,
             quality: "medium",
           });
-          const filename = `${randomUUID()}.png`;
-          await writeFile(path.join(uploadDir, filename), imageBuffer);
-          const imageUrl = `/uploads/scene-images/${filename}`;
-          scenesWithImages.push({ ...scene, imageUrl });
+          const blob = await put(`scene-images/${randomUUID()}.png`, imageBuffer, {
+            access: "public",
+            contentType: "image/png",
+          });
+          scenesWithImages.push({ ...scene, imageUrl: blob.url });
           send({
             type: "progress",
             sceneOrder: scene.order,
-            imageUrl,
+            imageUrl: blob.url,
             done: scenesWithImages.length,
             total: script.scenes.length,
           });
