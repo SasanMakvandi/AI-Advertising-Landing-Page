@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { generateSceneImage } from "@/lib/cometapi";
+import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
 import { ScriptSchema, type Brief, type Scene } from "@/lib/generation-schemas";
 
 function buildScenePrompt(scene: Scene, brief: Brief | null, aspectRatio: string) {
@@ -13,6 +14,8 @@ function buildScenePrompt(scene: Scene, brief: Brief | null, aspectRatio: string
 }
 
 export async function POST(request: Request) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   const session = await auth();
   if (!session?.user) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });

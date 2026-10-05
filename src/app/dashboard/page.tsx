@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { CreatePanel } from "@/components/CreatePanel";
+import { isAiEnabled } from "@/lib/features";
 
 export const metadata: Metadata = {
   title: "Dashboard — ReelSimple",
@@ -51,7 +52,23 @@ export default async function DashboardPage() {
       </div>
 
       <section className="mx-auto mb-12 max-w-[1200px] px-6 lg:px-12">
-        <CreatePanel />
+        {isAiEnabled() ? (
+          <CreatePanel />
+        ) : (
+          <div className="rounded-[28px] border border-hair bg-panel p-8 shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)] sm:p-12">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-semibold text-accent">
+              Coming soon
+            </span>
+            <h2 className="mt-5 mb-2 font-serif text-[clamp(22px,2.6vw,28px)] font-semibold tracking-tight text-text">
+              AI video creation is on its way
+            </h2>
+            <p className="max-w-[560px] text-[15px] leading-[1.5] text-text-dim">
+              Your account is set up and ready. We&apos;re putting the finishing touches on the
+              creation tools — you&apos;ll be able to describe a video here and watch it come to
+              life very soon.
+            </p>
+          </div>
+        )}
       </section>
 
       <section className="mx-auto max-w-[1200px] px-6 lg:px-12">
@@ -66,7 +83,9 @@ export default async function DashboardPage() {
           <div className="rounded-[28px] border border-dashed border-hair bg-panel p-12 text-center">
             <p className="mb-2 text-lg font-medium text-text">Nothing here yet</p>
             <p className="text-sm text-text-dim">
-              Use the panel above to create your first video.
+              {isAiEnabled()
+                ? "Use the panel above to create your first video."
+                : "Your videos will show up here once creation opens up."}
             </p>
           </div>
         ) : (

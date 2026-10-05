@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createVideoJob } from "@/lib/apiframe";
+import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
 import { ScriptWithImagesSchema, type Brief, type SceneWithImage } from "@/lib/generation-schemas";
 
 function buildScenePrompt(scene: SceneWithImage, brief: Brief | null) {
@@ -11,6 +12,8 @@ function buildScenePrompt(scene: SceneWithImage, brief: Brief | null) {
 }
 
 export async function POST(request: Request) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   const session = await auth();
   if (!session?.user) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });

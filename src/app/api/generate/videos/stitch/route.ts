@@ -9,6 +9,7 @@ import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ScriptWithImagesSchema } from "@/lib/generation-schemas";
+import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
 
 // Stitching re-encodes ~20-30s of combined footage — comfortably within a
 // couple minutes, but longer than the default serverless timeout.
@@ -17,6 +18,8 @@ export const maxDuration = 300;
 const execFileAsync = promisify(execFile);
 
 export async function POST(request: Request) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   const session = await auth();
   if (!session?.user) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });

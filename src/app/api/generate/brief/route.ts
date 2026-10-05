@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { anthropic, GENERATION_MODEL } from "@/lib/anthropic";
 import { BriefSchema } from "@/lib/generation-schemas";
 import { saveUploadedImages } from "@/lib/uploads";
+import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
 
 export async function POST(request: Request) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   const session = await auth();
   if (!session?.user) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });

@@ -3,9 +3,12 @@ import { put, del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getVideoJobStatus } from "@/lib/apiframe";
+import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
 import { ScriptWithImagesSchema } from "@/lib/generation-schemas";
 
 export async function GET(request: Request) {
+  if (!isAiEnabled()) return aiDisabledResponse();
+
   const session = await auth();
   if (!session?.user) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });
