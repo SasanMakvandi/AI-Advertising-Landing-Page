@@ -62,13 +62,24 @@ export const SceneWithImageSchema = SceneSchema.extend({
   // tracking a job across separate requests.
   videoJobId: z.string().nullable().optional(),
   videoStatus: z.enum(["queued", "in_progress", "completed", "failed"]).nullable().optional(),
+  // Why the last attempt failed, as reported by ApiFrame (e.g. a content
+  // filter rejecting the reference image). Shown so a retry isn't blind.
+  videoError: z.string().nullable().optional(),
+  // How many times this scene's image has been regenerated on its own. The
+  // count travels with the image, and the server only trusts its stored copy.
+  imageRegens: z.number().int().min(0).nullable().optional(),
 });
 
 export const ScriptWithImagesSchema = ScriptSchema.extend({
   scenes: z.array(SceneWithImageSchema),
   // The scene videos concatenated into one continuous clip, once stitched.
   finalVideoUrl: z.string().nullable().optional(),
+  // When the current video run started (ms since epoch), for the progress bar.
+  videoStartedAt: z.number().nullable().optional(),
 });
+
+// Per-scene image regenerations included before tokens apply.
+export const FREE_IMAGE_REGENS = 1;
 
 export type SceneWithImage = z.infer<typeof SceneWithImageSchema>;
 export type ScriptWithImages = z.infer<typeof ScriptWithImagesSchema>;

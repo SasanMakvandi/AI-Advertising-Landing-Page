@@ -37,7 +37,7 @@ export function Hero() {
           className="mt-6 max-w-[520px] text-lg leading-[1.6] text-text-dim"
         >
           We use AI to cut what a full shoot costs, then a real creative
-          director shapes it until it looks professionally made — for ads,
+          director shapes it until it looks professionally made, for ads,
           listing photos, or whatever you need shot.
         </motion.p>
 

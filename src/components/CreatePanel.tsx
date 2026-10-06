@@ -1,557 +1,142 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode, TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import {
-  ArrowRight,
-  Captions,
-  Check,
-  ChevronDown,
-  Image as ImageIcon,
-  Loader2,
-  Mic,
-  Minus,
-  Pencil,
-  Plus,
-  RefreshCw,
-  SlidersHorizontal,
-  Sparkles,
-  Upload,
-  Download,
-  Film,
-  Video,
-  Wand2,
-  X,
-} from "lucide-react";
+import { X } from "lucide-react";
 import type { Brief, Script, ScriptWithImages } from "@/lib/generation-schemas";
-import { MAX_REVISIONS } from "@/lib/generation-schemas";
+import { FREE_IMAGE_REGENS, MAX_REVISIONS } from "@/lib/generation-schemas";
+import { Stepper } from "./create/Stepper";
+import { DescribeStep } from "./create/DescribeStep";
+import { BriefStep } from "./create/BriefStep";
+import { ScriptStep } from "./create/ScriptStep";
+import { ImagesStep } from "./create/ImagesStep";
+import { VideoStep } from "./create/VideoStep";
+import {
+  deriveStep,
+  type DescribeForm,
+  type InitialProject,
+  type StepId,
+} from "./create/types";
+import {
+  MOCK_BRIEF,
+  MOCK_IMAGE_GRADIENTS,
+  MOCK_PROMPT,
+  MOCK_SCRIPT,
+  MOCK_SCRIPT_THINKING,
+  MOCK_THINKING,
+  normalizeResolution,
+} from "./create/constants";
+import { streamGenerate, wait } from "./create/api";
 
-type Stage = "prompt" | "extracting" | "brief" | "generating" | "done";
-type PickedFile = { file: File; url: string };
+type Scene = ScriptWithImages["scenes"][number];
 
-const DURATION_OPTIONS = [10, 15, 20, 25, 30];
-const RATIO_OPTIONS = ["9:16", "1:1", "16:9", "4:5"];
-const RESOLUTION_OPTIONS = ["720p", "1080p", "4K"];
-
-const VIDEO_RESOLUTION_OPTIONS = ["480p", "720p", "1080p"] as const;
-// $0.01 per ApiFrame credit, credits-per-second for Seedance 2 by resolution.
-const VIDEO_CREDITS_PER_SECOND: Record<string, number> = { "480p": 8, "720p": 19, "1080p": 43 };
-function estimateVideoCost(scenes: { duration: number }[], resolution: string) {
-  const perSecond = VIDEO_CREDITS_PER_SECOND[resolution] ?? VIDEO_CREDITS_PER_SECOND["480p"];
-  const totalSeconds = scenes.reduce((sum, s) => sum + s.duration, 0);
-  return (totalSeconds * perSecond * 0.01).toFixed(2);
+function emptyForm(): DescribeForm {
+  return {
+    prompt: "",
+    wantsVoiceover: true,
+    wantsSubtitles: false,
+    duration: 20,
+    aspectRatio: "9:16",
+    resolution: "480p",
+    negativePrompt: "",
+    assetFiles: [],
+    toneRefFiles: [],
+  };
 }
 
-// Avoids the "useLayoutEffect does nothing on the server" warning during SSR.
-const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
-
-const inputClass =
-  "w-full rounded-xl border border-hair bg-bg px-3.5 py-2.5 text-[13.5px] text-text outline-none transition-colors placeholder:text-text-dim focus:border-accent disabled:opacity-60";
-
-const isDev = process.env.NODE_ENV !== "production";
-
-const MOCK_PROMPT = "A 20-second product showcase for our new ceramic pour-over coffee set";
-
-const MOCK_THINKING = [
-  "Reading the brief for concrete details — product, audience, tone...\n",
-  "No explicit price given, so leaving that unset rather than guessing.\n",
-  "Tone reads as warm and unhurried given the morning-ritual framing.\n",
-];
-
-const MOCK_SCRIPT_THINKING = [
-  "Aiming for four ~5s scenes, roughly 20s total.\n",
-  "Opening on a sensory close-up usually earns attention fastest.\n",
-  "Splitting the voiceover evenly so each scene gets one clear line.\n",
-];
-
-// Claude's extended thinking is adaptive — for a short, simple request it
-// often reasons silently and streams back zero thinking tokens. These cycle
-// in the thinking panel as a fallback so the wait never looks empty; real
-// thinking text (when the model does produce it) always takes priority.
-const BRIEF_STATUS_MESSAGES = [
-  "Reading your request…",
-  "Identifying the product and audience…",
-  "Drafting tone and selling points…",
-  "Wrapping up the brief…",
-];
-const SCRIPT_STATUS_MESSAGES = [
-  "Reviewing the brief…",
-  "Blocking out scenes…",
-  "Writing shot descriptions…",
-  "Polishing the voiceover…",
-];
-
-const MOCK_BRIEF: Brief = {
-  productName: "Ceramic Pour-Over Coffee Set",
-  productDescription:
-    "A hand-glazed ceramic pour-over set designed for a slower, more deliberate morning coffee ritual.",
-  price: "$68",
-  targetAudience: "Home coffee enthusiasts who care about craft and aesthetics, ages 25-45",
-  tone: "Warm, premium, unhurried",
-  keySellingPoints: [
-    "Hand-glazed, one-of-a-kind ceramic finish",
-    "Designed for slow, intentional brewing",
-    "Looks as good on a shelf as it does in use",
-  ],
-  ctaIntent: "Shop now",
-};
-
-// Preview mode never calls CometAPI — these gradients stand in for
-// generated scene images, same style as the homepage demo and gallery cards.
-const MOCK_IMAGE_GRADIENTS = [
-  "linear-gradient(135deg, #4B4EFF, #211E19)",
-  "linear-gradient(135deg, #FF5C39, #4B4EFF)",
-  "linear-gradient(135deg, #E4DECF, #FF5C39)",
-  "linear-gradient(135deg, #211E19, #4B4EFF)",
-];
-
-const MOCK_SCRIPT: ScriptWithImages = {
-  voiceoverScript:
-    "Some mornings deserve more than instant coffee. Meet the pour-over set built for the ritual — hand-glazed ceramic, a slow bloom, and a cup that tastes like you meant it. Available now.",
-  scenes: [
-    {
-      order: 1,
-      shotType: "Close-up",
-      duration: 5,
-      description:
-        "Slow push-in on the pour-over set, steam curling upward, soft morning light through a window.",
-      voiceover: "Some mornings deserve more than instant coffee.",
-    },
-    {
-      order: 2,
-      shotType: "Wide",
-      duration: 5,
-      description: "Water arcing into the dripper in slow motion, coffee blooming beneath.",
-      voiceover: "Meet the pour-over set built for the ritual.",
-    },
-    {
-      order: 3,
-      shotType: "Lifestyle",
-      duration: 5,
-      description: "Hands wrapped around the finished mug at a sunlit table.",
-      voiceover: "A slow bloom. A cup that tastes like you meant it.",
-    },
-    {
-      order: 4,
-      shotType: "Macro",
-      duration: 5,
-      description: "Detail shot of the ceramic glaze and texture, logo subtly in frame.",
-      voiceover: "Hand-glazed ceramic. Available now.",
-    },
-  ],
-};
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// Blank lines are fine while typing selling points, but never worth saving.
+function cleanBrief(b: Brief): Brief {
+  return { ...b, keySellingPoints: b.keySellingPoints.map((s) => s.trim()).filter(Boolean) };
 }
 
-function downloadHref(url: string, filename: string) {
-  return `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+function renumber(scenes: Scene[]): Scene[] {
+  return scenes.map((s, i) => ({ ...s, order: i + 1 }));
 }
 
-// Reads an NDJSON stream of {type:"thinking",text} / {type:"result",...} /
-// {type:"error",message} lines, forwarding thinking deltas live and
-// resolving with the final result event.
-async function streamGenerate<T extends { type: "result" }>(
-  url: string,
-  body: unknown,
-  onThinking: (chunk: string) => void,
-  onProgress?: (event: Record<string, unknown>) => void
-): Promise<T> {
-  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: isForm ? undefined : { "Content-Type": "application/json" },
-    body: isForm ? body : JSON.stringify(body),
-  });
-
-  if (!res.ok || !res.body) {
-    const errBody = await res.json().catch(() => ({}));
-    throw new Error(errBody.error || "Request failed");
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let result: T | null = null;
-
-  function consumeLine(line: string) {
-    if (!line.trim()) return;
-    const event = JSON.parse(line);
-    if (event.type === "thinking") {
-      onThinking(event.text);
-    } else if (event.type === "progress") {
-      onProgress?.(event);
-    } else if (event.type === "error") {
-      throw new Error(event.message);
-    } else {
-      result = event;
-    }
-  }
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let newlineIndex;
-    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-      const line = buffer.slice(0, newlineIndex);
-      buffer = buffer.slice(newlineIndex + 1);
-      consumeLine(line);
-    }
-  }
-  if (buffer.trim()) consumeLine(buffer);
-
-  if (!result) throw new Error("Stream ended unexpectedly");
-  return result;
-}
-
-// A textarea that grows to fit its content (up to maxHeight) instead of
-// scrolling internally — scrolling only kicks in past that cap.
-function AutoTextarea({
-  value,
-  onChange,
-  className,
-  maxHeight = 320,
-  ...rest
-}: {
-  value: string;
-  onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
-  className?: string;
-  maxHeight?: number;
-} & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useIsoLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const next = Math.min(el.scrollHeight, maxHeight);
-    el.style.height = `${next}px`;
-    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, [value, maxHeight]);
-
-  return (
-    <textarea ref={ref} value={value} onChange={onChange} className={className} {...rest} />
-  );
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return <div className="rounded-2xl border border-hair bg-bg p-6">{children}</div>;
-}
-
-function ThinkingPanel({ text, fallback }: { text: string; fallback: string }) {
-  return (
-    <Panel>
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-text-dim uppercase">
-        <Loader2 size={12} className="animate-spin" />
-        Claude is working
-      </p>
-      <p className="max-h-[360px] overflow-y-auto whitespace-pre-line text-[13px] leading-[1.55] text-text-dim">
-        {text || fallback}
-      </p>
-    </Panel>
-  );
-}
-
-function NextStepsPreview() {
-  const steps = [
-    {
-      icon: Sparkles,
-      label: "Brief",
-      note: "We'll pull out product, audience, tone & selling points.",
-    },
-    { icon: Wand2, label: "Script", note: "A scene-by-scene shot list, ready to edit." },
-    {
-      icon: RefreshCw,
-      label: "Revisions",
-      note: `Up to ${MAX_REVISIONS} AI-assisted rewrites per project.`,
-    },
-  ];
-  return (
-    <Panel>
-      <p className="mb-5 text-[11.5px] font-semibold tracking-wide text-text-dim uppercase">
-        What happens next
-      </p>
-      <div className="flex flex-col gap-4">
-        {steps.map((s) => (
-          <div key={s.label} className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-              <s.icon size={15} />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-text">{s.label}</p>
-              <p className="text-[12.5px] leading-[1.45] text-text-dim">{s.note}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-function HistoryCard({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-hair bg-bg px-4 py-3">
-      <p className="mb-1 text-[10.5px] font-semibold tracking-wide text-text-dim/70 uppercase">
-        {label}
-      </p>
-      <p className="truncate text-[13px] leading-[1.45] text-text-dim">{children}</p>
-    </div>
-  );
-}
-
-function YesNoToggle({
-  icon: Icon,
-  label,
-  value,
-  onChange,
-  disabled,
-}: {
-  icon: typeof Mic;
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-hair bg-bg px-4 py-3">
-      <span className="flex items-center gap-2 text-[13.5px] font-medium text-text">
-        <Icon size={15} className="text-text-dim" />
-        {label}
-      </span>
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(true)}
-          className={`rounded-full border px-3.5 py-[6px] text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${
-            value
-              ? "border-text bg-text text-bg"
-              : "border-hair text-text-dim hover:border-text/30 hover:text-text"
-          }`}
-        >
-          Yes
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(false)}
-          className={`rounded-full border px-3.5 py-[6px] text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${
-            !value
-              ? "border-text bg-text text-bg"
-              : "border-hair text-text-dim hover:border-text/30 hover:text-text"
-          }`}
-        >
-          No
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DurationStepper({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-0.5 rounded-full border border-hair bg-panel p-0.5">
-      <button
-        type="button"
-        disabled={disabled || value <= 1}
-        onClick={() => onChange(Math.max(1, value - 1))}
-        aria-label="Decrease duration"
-        className="flex h-5 w-5 items-center justify-center rounded-full text-text-dim transition-colors hover:bg-panel-2 hover:text-text disabled:opacity-30"
-      >
-        <Minus size={11} />
-      </button>
-      <span className="w-9 text-center font-mono text-[11px] text-text-dim">{value}s</span>
-      <button
-        type="button"
-        disabled={disabled || value >= 30}
-        onClick={() => onChange(Math.min(30, value + 1))}
-        aria-label="Increase duration"
-        className="flex h-5 w-5 items-center justify-center rounded-full text-text-dim transition-colors hover:bg-panel-2 hover:text-text disabled:opacity-30"
-      >
-        <Plus size={11} />
-      </button>
-    </div>
-  );
-}
-
-function ChipGroup<T extends string | number>({
-  label,
-  options,
-  value,
-  onChange,
-  disabled,
-  formatLabel,
-}: {
-  label: string;
-  options: T[];
-  value: T;
-  onChange: (v: T) => void;
-  disabled?: boolean;
-  formatLabel?: (v: T) => string;
-}) {
-  return (
-    <div>
-      <span className="mb-2 block text-[11.5px] font-semibold tracking-wide text-text-dim uppercase">
-        {label}
-      </span>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(opt)}
-            className={`rounded-full border px-3.5 py-[7px] text-[13px] font-medium transition-colors disabled:opacity-60 ${
-              value === opt
-                ? "border-text bg-text text-bg"
-                : "border-hair text-text-dim hover:border-text/30 hover:text-text"
-            }`}
-          >
-            {formatLabel ? formatLabel(opt) : opt}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FileDropzone({
-  label,
-  hint,
-  files,
-  onAdd,
-  onRemove,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  files: PickedFile[];
-  onAdd: (files: File[]) => void;
-  onRemove: (index: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <span className="mb-2 block text-[11.5px] font-semibold tracking-wide text-text-dim uppercase">
-        {label}
-      </span>
-      {files.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {files.map((f, i) => (
-            <div
-              key={f.url}
-              className="group relative h-16 w-16 overflow-hidden rounded-lg border border-hair"
-            >
-              <Image src={f.url} alt={f.file.name} fill unoptimized className="object-cover" />
-              <button
-                type="button"
-                aria-label="Remove image"
-                onClick={() => onRemove(i)}
-                disabled={disabled}
-                className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 disabled:opacity-60"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <label
-        className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-hair bg-bg px-4 py-4 text-[12.5px] font-medium text-text-dim transition-colors hover:border-accent hover:text-text ${
-          disabled ? "pointer-events-none opacity-60" : ""
-        }`}
-      >
-        <Upload size={14} />
-        {hint}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          multiple
-          disabled={disabled}
-          onChange={(e) => {
-            const picked = Array.from(e.target.files || []);
-            if (picked.length) onAdd(picked);
-            e.target.value = "";
-          }}
-          className="hidden"
-        />
-      </label>
-    </div>
-  );
-}
-
-export function CreatePanel() {
+export function CreatePanel({ initialProject = null }: { initialProject?: InitialProject | null }) {
   const router = useRouter();
-  const [stage, setStage] = useState<Stage>("prompt");
-  const [prompt, setPrompt] = useState("");
-  const [wantsVoiceover, setWantsVoiceover] = useState(true);
-  const [wantsSubtitles, setWantsSubtitles] = useState(false);
-  const [duration, setDuration] = useState(20);
-  const [aspectRatio, setAspectRatio] = useState("9:16");
-  const [assetFiles, setAssetFiles] = useState<PickedFile[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [resolution, setResolution] = useState("1080p");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [toneRefFiles, setToneRefFiles] = useState<PickedFile[]>([]);
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [brief, setBrief] = useState<Brief | null>(null);
-  const [script, setScript] = useState<ScriptWithImages | null>(null);
+  const init = initialProject;
+  const startStep = deriveStep(init?.brief ?? null, init?.script ?? null);
+
+  const [form, setForm] = useState<DescribeForm>(() =>
+    init
+      ? {
+          prompt: init.prompt,
+          wantsVoiceover: init.wantsVoiceover,
+          wantsSubtitles: init.wantsSubtitles,
+          duration: init.duration,
+          aspectRatio: init.aspectRatio,
+          resolution: normalizeResolution(init.resolution),
+          negativePrompt: init.negativePrompt ?? "",
+          assetFiles: [],
+          toneRefFiles: [],
+        }
+      : emptyForm()
+  );
+  const [projectId, setProjectId] = useState<string | null>(init?.id ?? null);
+  const [assetUrls, setAssetUrls] = useState<string[]>(init?.assetUrls ?? []);
+  const [toneUrls, setToneUrls] = useState<string[]>(init?.toneReferenceUrls ?? []);
+  const [brief, setBrief] = useState<Brief | null>(init?.brief ?? null);
+  const [script, setScript] = useState<ScriptWithImages | null>(init?.script ?? null);
   const [isMock, setIsMock] = useState(false);
-  const [thinking, setThinking] = useState("");
-  const [statusIndex, setStatusIndex] = useState(0);
-  const statusTickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [revisionsLeft, setRevisionsLeft] = useState(
+    Math.max(0, MAX_REVISIONS - (init?.revisionCount ?? 0))
+  );
+  const [isFinalized, setIsFinalized] = useState(init?.status === "finalized");
+  const [step, setStep] = useState<StepId>(startStep);
+  const [maxVisited, setMaxVisited] = useState<StepId>(startStep);
+
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isWritingScript, setIsWritingScript] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
-  const [revisionsLeft, setRevisionsLeft] = useState(MAX_REVISIONS);
-  const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isFinalized, setIsFinalized] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [imageProgress, setImageProgress] = useState({ done: 0, total: 0 });
-  const [videoResolution, setVideoResolution] = useState<(typeof VIDEO_RESOLUTION_OPTIONS)[number]>(
-    "480p"
-  );
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const [isGeneratingVideos, setIsGeneratingVideos] = useState(false);
   const [isStitching, setIsStitching] = useState(false);
-  const videoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+
+  const [thinking, setThinking] = useState("");
+  const [statusIndex, setStatusIndex] = useState(0);
   const [error, setError] = useState("");
 
-  function addFiles(setter: typeof setAssetFiles, files: File[]) {
-    setter((prev) => [...prev, ...files.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
+  const statusTickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollBusyRef = useRef(false);
+  const dirtyRef = useRef({ brief: false, script: false });
+
+  const busy =
+    isExtracting ||
+    isWritingScript ||
+    isRevising ||
+    isGeneratingImages ||
+    regeneratingIndex !== null ||
+    isGeneratingVideos ||
+    isStitching ||
+    isFinalizing;
+
+  function updateForm(patch: Partial<DescribeForm>) {
+    setForm((f) => ({ ...f, ...patch }));
   }
 
-  function removeFile(setter: typeof setAssetFiles, index: number) {
-    setter((prev) => {
-      const next = [...prev];
-      const [removed] = next.splice(index, 1);
-      if (removed) URL.revokeObjectURL(removed.url);
-      return next;
-    });
+  function showStep(id: StepId) {
+    setStep(id);
+    setMaxVisited((m) => (id > m ? id : m));
+    setError("");
   }
 
-  // Cycles the thinking panel's fallback status line while a real request is
-  // in flight — Claude's adaptive thinking frequently streams back nothing
-  // for a short task, so this keeps the wait from looking stalled.
-  useEffect(() => () => stopStatusTicker(), []);
-  useEffect(() => () => stopVideoPolling(), []);
-
-  function stopVideoPolling() {
-    if (videoPollRef.current) {
-      clearInterval(videoPollRef.current);
-      videoPollRef.current = null;
-    }
+  function canReach(id: StepId) {
+    if (id === 1) return true;
+    if (id === 2) return !!brief;
+    return !!script;
   }
 
+  function goToStep(id: StepId) {
+    if (busy || !canReach(id)) return;
+    showStep(id);
+  }
+
+  // Cycles the working panel's fallback line while a Claude request runs.
   function startStatusTicker() {
     setStatusIndex(0);
     if (statusTickerRef.current) clearInterval(statusTickerRef.current);
@@ -565,50 +150,100 @@ export function CreatePanel() {
     }
   }
 
-  function reset() {
-    setStage("prompt");
-    setPrompt("");
-    setWantsVoiceover(true);
-    setWantsSubtitles(false);
-    setDuration(20);
-    setAspectRatio("9:16");
-    setResolution("1080p");
-    setNegativePrompt("");
-    setShowAdvanced(false);
-    assetFiles.forEach((f) => URL.revokeObjectURL(f.url));
-    toneRefFiles.forEach((f) => URL.revokeObjectURL(f.url));
-    setAssetFiles([]);
-    setToneRefFiles([]);
+  function stopVideoPolling() {
+    if (videoPollRef.current) {
+      clearInterval(videoPollRef.current);
+      videoPollRef.current = null;
+    }
+  }
+
+  useEffect(
+    () => () => {
+      stopStatusTicker();
+      stopVideoPolling();
+    },
+    []
+  );
+
+  // Picking a saved project back up while its video is still rendering.
+  useEffect(() => {
+    if (init?.script?.scenes.some((s) => s.videoJobId)) startVideoPolling(init.id, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave edits to the brief and script so a project can be resumed from
+  // the gallery exactly as it was left.
+  useEffect(() => {
+    if (!projectId || isMock || isFinalized || busy) return;
+    const dirty = dirtyRef.current;
+    if (!dirty.brief && !dirty.script) return;
+    const timer = setTimeout(() => {
+      const payload: Record<string, unknown> = { projectId };
+      if (dirty.brief && brief) payload.brief = cleanBrief(brief);
+      if (dirty.script && script) payload.script = script;
+      dirtyRef.current = { brief: false, script: false };
+      fetch("/api/projects/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(() => {
+          if (dirty.brief) router.refresh();
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [brief, script, busy, projectId, isMock, isFinalized, router]);
+
+  function startNew() {
+    if (init) {
+      router.push("/dashboard");
+      return;
+    }
+    form.assetFiles.forEach((f) => URL.revokeObjectURL(f.url));
+    form.toneRefFiles.forEach((f) => URL.revokeObjectURL(f.url));
+    stopStatusTicker();
+    stopVideoPolling();
+    dirtyRef.current = { brief: false, script: false };
+    setForm(emptyForm());
     setProjectId(null);
+    setAssetUrls([]);
+    setToneUrls([]);
     setBrief(null);
     setScript(null);
     setIsMock(false);
-    setThinking("");
-    stopStatusTicker();
-    setIsRevising(false);
     setRevisionsLeft(MAX_REVISIONS);
-    setIsFinalizing(false);
     setIsFinalized(false);
+    setStep(1);
+    setMaxVisited(1);
+    setIsExtracting(false);
+    setIsWritingScript(false);
+    setIsRevising(false);
     setIsGeneratingImages(false);
-    setImageProgress({ done: 0, total: 0 });
-    setVideoResolution("480p");
-    stopVideoPolling();
+    setRegeneratingIndex(null);
     setIsGeneratingVideos(false);
     setIsStitching(false);
+    setIsFinalizing(false);
+    setImageProgress({ done: 0, total: 0 });
+    setThinking("");
     setError("");
   }
+
+  // ---------------------------------------------------------------- step 1
 
   async function handlePreview() {
     setError("");
     setIsMock(true);
-    setPrompt(MOCK_PROMPT);
-    setWantsVoiceover(true);
-    setWantsSubtitles(false);
-    setDuration(20);
-    setAspectRatio("9:16");
-    setResolution("1080p");
-    setNegativePrompt("");
-    setStage("extracting");
+    updateForm({
+      prompt: MOCK_PROMPT,
+      wantsVoiceover: true,
+      wantsSubtitles: false,
+      duration: 20,
+      aspectRatio: "9:16",
+      resolution: "480p",
+      negativePrompt: "",
+    });
+    setIsExtracting(true);
     setThinking("");
     for (const line of MOCK_THINKING) {
       await wait(500);
@@ -616,29 +251,30 @@ export function CreatePanel() {
     }
     await wait(400);
     setBrief(MOCK_BRIEF);
-    setStage("brief");
+    setIsExtracting(false);
+    showStep(2);
   }
 
   async function handleExtract() {
-    if (!prompt.trim()) {
+    if (!form.prompt.trim()) {
       setError("Tell us what you're making first.");
       return;
     }
     setError("");
     setIsMock(false);
-    setStage("extracting");
+    setIsExtracting(true);
     setThinking("");
 
-    const form = new FormData();
-    form.set("prompt", prompt.trim());
-    form.set("wantsVoiceover", String(wantsVoiceover));
-    form.set("wantsSubtitles", String(wantsSubtitles));
-    form.set("duration", String(duration));
-    form.set("aspectRatio", aspectRatio);
-    form.set("resolution", resolution);
-    if (negativePrompt.trim()) form.set("negativePrompt", negativePrompt.trim());
-    assetFiles.forEach(({ file }) => form.append("assets", file));
-    toneRefFiles.forEach(({ file }) => form.append("toneRefs", file));
+    const data = new FormData();
+    data.set("prompt", form.prompt.trim());
+    data.set("wantsVoiceover", String(form.wantsVoiceover));
+    data.set("wantsSubtitles", String(form.wantsSubtitles));
+    data.set("duration", String(form.duration));
+    data.set("aspectRatio", form.aspectRatio);
+    data.set("resolution", form.resolution);
+    if (form.negativePrompt.trim()) data.set("negativePrompt", form.negativePrompt.trim());
+    form.assetFiles.forEach(({ file }) => data.append("assets", file));
+    form.toneRefFiles.forEach(({ file }) => data.append("toneRefs", file));
 
     startStatusTicker();
     try {
@@ -646,22 +282,45 @@ export function CreatePanel() {
         type: "result";
         projectId: string;
         brief: Brief;
-      }>("/api/generate/brief", form, (chunk) => setThinking((prev) => prev + chunk));
+        assetUrls: string[];
+        toneReferenceUrls: string[];
+      }>("/api/generate/brief", data, (chunk) => setThinking((prev) => prev + chunk));
+      form.assetFiles.forEach((f) => URL.revokeObjectURL(f.url));
+      form.toneRefFiles.forEach((f) => URL.revokeObjectURL(f.url));
+      updateForm({ assetFiles: [], toneRefFiles: [] });
+      setAssetUrls(result.assetUrls ?? []);
+      setToneUrls(result.toneReferenceUrls ?? []);
       setProjectId(result.projectId);
       setBrief(result.brief);
-      setStage("brief");
+      showStep(2);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong — please try again.");
-      setStage("prompt");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       stopStatusTicker();
+      setIsExtracting(false);
     }
   }
 
-  async function handleConfirmBrief() {
+  // ---------------------------------------------------------------- step 2
+
+  function updateBrief(patch: Partial<Brief>) {
+    setBrief((b) => (b ? { ...b, ...patch } : b));
+    dirtyRef.current = { ...dirtyRef.current, brief: true };
+  }
+
+  async function handleGenerateScript() {
     if (!brief) return;
+    if (
+      script &&
+      !window.confirm(
+        "This replaces your current script (including any edits) and clears generated images and video. Continue?"
+      )
+    ) {
+      return;
+    }
     setError("");
-    setStage("generating");
+    setIsWritingScript(true);
     setThinking("");
 
     if (isMock) {
@@ -670,37 +329,100 @@ export function CreatePanel() {
         setThinking((prev) => prev + line);
       }
       await wait(300);
-      setScript(MOCK_SCRIPT);
+      setScript(structuredClone(MOCK_SCRIPT));
       setRevisionsLeft(MAX_REVISIONS);
-      setStage("done");
+      setIsWritingScript(false);
+      showStep(3);
       return;
     }
 
-    if (!projectId) return;
+    if (!projectId) {
+      setIsWritingScript(false);
+      return;
+    }
 
     startStatusTicker();
     try {
+      const cleaned = cleanBrief(brief);
       const result = await streamGenerate<{
         type: "result";
         script: Script;
         revisionsLeft: number;
-      }>("/api/generate/script", { projectId, brief }, (chunk) =>
+      }>("/api/generate/script", { projectId, brief: cleaned }, (chunk) =>
         setThinking((prev) => prev + chunk)
       );
+      dirtyRef.current = { brief: false, script: false };
+      setBrief(cleaned);
       setScript(result.script);
       setRevisionsLeft(result.revisionsLeft);
-      setStage("done");
+      showStep(3);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong — please try again.");
-      setStage("brief");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       stopStatusTicker();
+      setIsWritingScript(false);
     }
   }
 
-  async function handleReviseScript() {
+  // ---------------------------------------------------------------- step 3
+
+  function editScript(fn: (s: ScriptWithImages) => ScriptWithImages) {
+    setScript((prev) => (prev ? fn(prev) : prev));
+    dirtyRef.current = { ...dirtyRef.current, script: true };
+  }
+
+  function updateScene<K extends keyof Scene>(index: number, key: K, value: Scene[K]) {
+    editScript((s) => ({
+      ...s,
+      scenes: s.scenes.map((sc, i) => (i === index ? { ...sc, [key]: value } : sc)),
+    }));
+  }
+
+  function moveScene(index: number, direction: -1 | 1) {
+    editScript((s) => {
+      const target = index + direction;
+      if (target < 0 || target >= s.scenes.length) return s;
+      const scenes = [...s.scenes];
+      [scenes[index], scenes[target]] = [scenes[target], scenes[index]];
+      return { ...s, scenes: renumber(scenes) };
+    });
+  }
+
+  function addScene() {
+    editScript((s) => ({
+      ...s,
+      scenes: renumber([
+        ...s.scenes,
+        {
+          order: s.scenes.length + 1,
+          shotType: "",
+          duration: 5,
+          description: "",
+          voiceover: s.voiceoverScript === null ? null : "",
+        },
+      ]),
+    }));
+  }
+
+  function removeScene(index: number) {
+    editScript((s) =>
+      s.scenes.length <= 1 ? s : { ...s, scenes: renumber(s.scenes.filter((_, i) => i !== index)) }
+    );
+  }
+
+  async function handleRevise() {
     if (!brief || !script || revisionsLeft <= 0) return;
+    const hasAssets =
+      !!script.finalVideoUrl || script.scenes.some((s) => s.imageUrl || s.videoUrl || s.videoJobId);
+    if (
+      hasAssets &&
+      !window.confirm(
+        "Revising replaces your scenes and clears the images and video you've generated. Continue?"
+      )
+    ) {
+      return;
+    }
     setError("");
     setIsRevising(true);
     setThinking("");
@@ -716,7 +438,10 @@ export function CreatePanel() {
       return;
     }
 
-    if (!projectId) return;
+    if (!projectId) {
+      setIsRevising(false);
+      return;
+    }
 
     startStatusTicker();
     try {
@@ -724,18 +449,22 @@ export function CreatePanel() {
         type: "result";
         script: Script;
         revisionsLeft: number;
-      }>("/api/generate/revise", { projectId, brief, script }, (chunk) =>
+      }>("/api/generate/revise", { projectId, brief: cleanBrief(brief), script }, (chunk) =>
         setThinking((prev) => prev + chunk)
       );
+      dirtyRef.current = { ...dirtyRef.current, script: false };
       setScript(result.script);
       setRevisionsLeft(result.revisionsLeft);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong — please try again.");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       stopStatusTicker();
       setIsRevising(false);
     }
   }
+
+  // ---------------------------------------------------------------- step 4
 
   async function handleGenerateImages() {
     if (!script) return;
@@ -749,7 +478,10 @@ export function CreatePanel() {
         const gradient = MOCK_IMAGE_GRADIENTS[i % MOCK_IMAGE_GRADIENTS.length];
         setScript((prev) =>
           prev
-            ? { ...prev, scenes: prev.scenes.map((s, idx) => (idx === i ? { ...s, imageUrl: gradient } : s)) }
+            ? {
+                ...prev,
+                scenes: prev.scenes.map((s, idx) => (idx === i ? { ...s, imageUrl: gradient } : s)),
+              }
             : prev
         );
         setImageProgress({ done: i + 1, total: script.scenes.length });
@@ -758,7 +490,10 @@ export function CreatePanel() {
       return;
     }
 
-    if (!projectId) return;
+    if (!projectId) {
+      setIsGeneratingImages(false);
+      return;
+    }
 
     try {
       const result = await streamGenerate<{ type: "result"; script: ScriptWithImages }>(
@@ -766,40 +501,155 @@ export function CreatePanel() {
         { projectId, script },
         () => {},
         (event) => {
-          const sceneOrder = event.sceneOrder as number;
+          const index = (event.done as number) - 1;
           const imageUrl = event.imageUrl as string;
           setImageProgress({ done: event.done as number, total: event.total as number });
           setScript((prev) =>
             prev
               ? {
                   ...prev,
-                  scenes: prev.scenes.map((s) => (s.order === sceneOrder ? { ...s, imageUrl } : s)),
+                  scenes: prev.scenes.map((s, i) => (i === index ? { ...s, imageUrl } : s)),
                 }
               : prev
           );
         }
       );
+      dirtyRef.current = { ...dirtyRef.current, script: false };
       setScript(result.script);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't generate reference images — please try again.");
+      setError(
+        err instanceof Error ? err.message : "Couldn't generate reference images. Please try again."
+      );
     } finally {
       setIsGeneratingImages(false);
     }
   }
 
-  async function handleGenerateVideos() {
+  // Regenerates one scene's image from its edited description. Each scene
+  // gets one free regeneration; the server enforces that from its own copy.
+  async function handleRegenerateImage(index: number) {
     if (!script) return;
+    const scene = script.scenes[index];
+    if (!scene?.imageUrl || (scene.imageRegens ?? 0) >= FREE_IMAGE_REGENS) return;
     setError("");
-    setIsGeneratingVideos(true);
+    setRegeneratingIndex(index);
 
     if (isMock) {
-      const stages: Array<"queued" | "in_progress" | "completed"> = [
-        "queued",
-        "in_progress",
-        "completed",
-      ];
-      for (const videoStatus of stages) {
+      await wait(900);
+      const gradient = MOCK_IMAGE_GRADIENTS[(index + 1) % MOCK_IMAGE_GRADIENTS.length];
+      setScript((prev) =>
+        prev
+          ? {
+              ...prev,
+              scenes: prev.scenes.map((s, i) =>
+                i === index ? { ...s, imageUrl: gradient, imageRegens: (s.imageRegens ?? 0) + 1 } : s
+              ),
+            }
+          : prev
+      );
+      setRegeneratingIndex(null);
+      return;
+    }
+
+    if (!projectId) {
+      setRegeneratingIndex(null);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/generate/images/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, script, sceneIndex: index }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't regenerate this image. Please try again.");
+      dirtyRef.current = { ...dirtyRef.current, script: false };
+      setScript(body.script);
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Couldn't regenerate this image. Please try again."
+      );
+    } finally {
+      setRegeneratingIndex(null);
+    }
+  }
+
+  // ---------------------------------------------------------------- step 5
+
+  async function runStitch(pid: string) {
+    setError("");
+    setIsStitching(true);
+    try {
+      const res = await fetch("/api/generate/videos/stitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: pid }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Couldn't join the scenes together.");
+      setScript(body.script);
+      // Uploaded photos are deleted once the video is finished.
+      if (body.uploadsCleared) {
+        setAssetUrls([]);
+        setToneUrls([]);
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't join the scenes together.");
+    } finally {
+      setIsStitching(false);
+    }
+  }
+
+  // Checks on the video jobs every few seconds. When every scene is finished
+  // the clips are joined into the final video without another click.
+  function startVideoPolling(pid: string, immediate: boolean) {
+    stopVideoPolling();
+    setIsGeneratingVideos(true);
+
+    const tick = async () => {
+      if (pollBusyRef.current) return;
+      pollBusyRef.current = true;
+      try {
+        const res = await fetch(`/api/generate/videos/status?projectId=${pid}`);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Couldn't check on your video.");
+        const next: ScriptWithImages = body.script;
+        setScript(next);
+
+        if (!next.scenes.some((s) => s.videoJobId)) {
+          stopVideoPolling();
+          setIsGeneratingVideos(false);
+          if (next.scenes.length > 0 && next.scenes.every((s) => s.videoUrl)) {
+            await runStitch(pid);
+          } else {
+            setError("Some scenes didn't finish. You can retry just the missing ones.");
+          }
+        }
+      } catch (err) {
+        stopVideoPolling();
+        setIsGeneratingVideos(false);
+        setError(err instanceof Error ? err.message : "Couldn't check on your video.");
+      } finally {
+        pollBusyRef.current = false;
+      }
+    };
+
+    videoPollRef.current = setInterval(tick, 6000);
+    if (immediate) void tick();
+  }
+
+  async function handleGenerateVideos(onlyMissing: boolean) {
+    if (!script) return;
+    setError("");
+
+    if (isMock) {
+      setIsGeneratingVideos(true);
+      setScript((prev) => (prev ? { ...prev, videoStartedAt: Date.now() } : prev));
+      for (const videoStatus of ["queued", "in_progress", "completed"] as const) {
         await wait(900);
         setScript((prev) =>
           prev
@@ -808,89 +658,62 @@ export function CreatePanel() {
                 scenes: prev.scenes.map((s) => ({
                   ...s,
                   videoStatus,
-                  // Mock mode never has a real file — this sentinel just
-                  // flips the UI's "has a video" check to true so the
-                  // preview placeholder renders.
-                  videoUrl: videoStatus === "completed" ? "mock-preview" : s.videoUrl,
+                  videoJobId: videoStatus === "completed" ? null : "mock-job",
+                  videoUrl: videoStatus === "completed" ? "mock-preview" : null,
                 })),
               }
             : prev
         );
       }
       setIsGeneratingVideos(false);
+      setIsStitching(true);
+      await wait(1200);
+      setScript((prev) =>
+        prev
+          ? {
+              ...prev,
+              finalVideoUrl: "mock-preview",
+              scenes: prev.scenes.map((s) => ({ ...s, videoUrl: null })),
+            }
+          : prev
+      );
+      setIsStitching(false);
       return;
     }
 
     if (!projectId) return;
-
+    setIsGeneratingVideos(true);
     try {
       const res = await fetch("/api/generate/videos/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, script, resolution: videoResolution }),
+        body: JSON.stringify({
+          projectId,
+          script,
+          resolution: normalizeResolution(form.resolution),
+          onlyMissing,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (body.script) setScript(body.script);
       if (!res.ok && !body.script) {
-        throw new Error(body.error || "Couldn't start video generation — please try again.");
+        throw new Error(body.error || "Couldn't start video generation. Please try again.");
       }
       if (body.error) setError(body.error);
 
-      stopVideoPolling();
-      videoPollRef.current = setInterval(async () => {
-        try {
-          const pollRes = await fetch(`/api/generate/videos/status?projectId=${projectId}`);
-          const pollBody = await pollRes.json().catch(() => ({}));
-          if (!pollRes.ok) throw new Error(pollBody.error || "Couldn't check video status");
-          setScript(pollBody.script);
-          const stillPending = pollBody.script?.scenes?.some(
-            (s: { videoJobId?: string | null }) => s.videoJobId
-          );
-          if (!stillPending) {
-            stopVideoPolling();
-            setIsGeneratingVideos(false);
-            router.refresh();
-          }
-        } catch (err) {
-          stopVideoPolling();
-          setIsGeneratingVideos(false);
-          setError(err instanceof Error ? err.message : "Couldn't check video status");
-        }
-      }, 8000);
+      const anyPending = (body.script as ScriptWithImages | undefined)?.scenes.some(
+        (s) => s.videoJobId
+      );
+      if (!anyPending) {
+        setIsGeneratingVideos(false);
+        return;
+      }
+      startVideoPolling(projectId, false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't start video generation — please try again.");
+      setError(
+        err instanceof Error ? err.message : "Couldn't start video generation. Please try again."
+      );
       setIsGeneratingVideos(false);
-    }
-  }
-
-  async function handleStitchVideos() {
-    if (!script) return;
-    setError("");
-    setIsStitching(true);
-
-    if (isMock) {
-      await wait(1200);
-      setScript((prev) => (prev ? { ...prev, finalVideoUrl: "mock-preview" } : prev));
-      setIsStitching(false);
-      return;
-    }
-
-    if (!projectId) return;
-
-    try {
-      const res = await fetch("/api/generate/videos/stitch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, script }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || "Couldn't stitch the scenes together.");
-      setScript(body.script);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't stitch the scenes together.");
-    } finally {
-      setIsStitching(false);
     }
   }
 
@@ -912,703 +735,161 @@ export function CreatePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, script }),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.error || "Couldn't finalize — please try again.");
+        throw new Error(body.error || "Couldn't finalize. Please try again.");
+      }
+      if (body.uploadsCleared) {
+        setAssetUrls([]);
+        setToneUrls([]);
       }
       setIsFinalized(true);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong — please try again.");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsFinalizing(false);
     }
   }
 
-  function updateBrief<K extends keyof Brief>(key: K, value: Brief[K]) {
-    setBrief((prev) => (prev ? { ...prev, [key]: value } : prev));
-  }
+  // ---------------------------------------------------------------- render
 
-  function updateScene<K extends keyof ScriptWithImages["scenes"][number]>(
-    index: number,
-    key: K,
-    value: ScriptWithImages["scenes"][number][K]
-  ) {
-    setScript((prev) => {
-      if (!prev) return prev;
-      const scenes = prev.scenes.map((s, i) => (i === index ? { ...s, [key]: value } : s));
-      return { ...prev, scenes };
-    });
-  }
-
-  const totalDuration = script?.scenes.reduce((sum, s) => sum + s.duration, 0) ?? 0;
-  const scenesLocked = isRevising || isFinalized;
+  const subtitle =
+    step === 1
+      ? "Describe what you need and we'll turn it into a finished video."
+      : step === 2
+        ? "Review what we understood from your request."
+        : step === 3
+          ? "Shape the scene by scene plan."
+          : step === 4
+            ? "See each scene before it becomes video."
+            : "Review everything, then make your video.";
 
   return (
-    <div className="rounded-[28px] border border-hair bg-panel p-8 shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)] sm:p-12">
+    <div className="rounded-[28px] border border-hair bg-panel p-6 shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)] sm:p-10">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-semibold text-accent">
-          Create
+          {projectId || brief ? "Project" : "Create"}
         </span>
-        {isMock && stage !== "prompt" && (
+        {isMock && (
           <span className="rounded-full bg-panel-2 px-2.5 py-1 text-[10.5px] font-semibold tracking-wide text-text-dim uppercase">
-            Preview · no tokens used
+            Preview, no tokens used
           </span>
         )}
       </div>
       <h2 className="mb-1 font-serif text-[clamp(22px,2.6vw,28px)] font-semibold tracking-tight text-text">
-        New project
+        {brief?.productName?.trim() || "New project"}
       </h2>
-      <p className="mb-8 max-w-[560px] text-[15px] leading-[1.5] text-text-dim">
-        Describe what you need — we&apos;ll turn it into a finished video.
-      </p>
+      <p className="mb-7 max-w-[600px] text-[15px] leading-[1.5] text-text-dim">{subtitle}</p>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10">
-        {/* LEFT — controls, and a running history of completed steps */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {(stage === "prompt" || stage === "extracting") && (
-            <>
-              <div>
-                <p className="mb-2 text-[11.5px] font-semibold tracking-wide text-text-dim uppercase">
-                  What are you making?
-                </p>
-                <AutoTextarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={3}
-                  maxHeight={240}
-                  placeholder="e.g. A 20-second product showcase for our new ceramic mug"
-                  disabled={stage === "extracting"}
-                  className="w-full resize-none overflow-hidden rounded-xl border border-hair bg-bg px-4 py-3.5 text-[15.5px] leading-[1.5] text-text outline-none transition-colors focus:border-accent disabled:opacity-60"
-                />
-              </div>
+      <Stepper
+        current={step}
+        maxVisited={maxVisited}
+        canReach={canReach}
+        disabled={busy}
+        onSelect={goToStep}
+      />
 
-              <div className="grid grid-cols-2 gap-3">
-                <ChipGroup
-                  label="Length"
-                  options={DURATION_OPTIONS}
-                  value={duration}
-                  onChange={setDuration}
-                  disabled={stage === "extracting"}
-                  formatLabel={(v) => `${v}s`}
-                />
-                <ChipGroup
-                  label="Ratio"
-                  options={RATIO_OPTIONS}
-                  value={aspectRatio}
-                  onChange={setAspectRatio}
-                  disabled={stage === "extracting"}
-                />
-              </div>
-
-              <FileDropzone
-                label="Product photos (optional)"
-                hint="Upload reference photos"
-                files={assetFiles}
-                onAdd={(files) => addFiles(setAssetFiles, files)}
-                onRemove={(i) => removeFile(setAssetFiles, i)}
-                disabled={stage === "extracting"}
-              />
-
-              <YesNoToggle
-                icon={Mic}
-                label="Needs voiceover?"
-                value={wantsVoiceover}
-                disabled={stage === "extracting"}
-                onChange={(v) => {
-                  setWantsVoiceover(v);
-                  if (!v) setWantsSubtitles(false);
-                }}
-              />
-              {wantsVoiceover && (
-                <YesNoToggle
-                  icon={Captions}
-                  label="Include subtitles?"
-                  value={wantsSubtitles}
-                  disabled={stage === "extracting"}
-                  onChange={setWantsSubtitles}
-                />
-              )}
-
-              <div className="overflow-hidden rounded-xl border border-hair bg-bg">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced((v) => !v)}
-                  disabled={stage === "extracting"}
-                  className="flex w-full items-center justify-between px-4 py-3 text-[13px] font-semibold text-text disabled:opacity-60"
-                >
-                  <span className="flex items-center gap-2">
-                    <SlidersHorizontal size={14} className="text-text-dim" />
-                    Advanced options
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`text-text-dim transition-transform ${showAdvanced ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {showAdvanced && (
-                  <div className="flex flex-col gap-4 border-t border-hair px-4 py-4">
-                    <ChipGroup
-                      label="Resolution"
-                      options={RESOLUTION_OPTIONS}
-                      value={resolution}
-                      onChange={setResolution}
-                      disabled={stage === "extracting"}
-                    />
-                    <div>
-                      <label className="mb-2 block text-[11.5px] font-semibold tracking-wide text-text-dim uppercase">
-                        Negative prompt
-                      </label>
-                      <AutoTextarea
-                        value={negativePrompt}
-                        onChange={(e) => setNegativePrompt(e.target.value)}
-                        rows={2}
-                        maxHeight={140}
-                        placeholder="Anything to avoid — e.g. text overlays, fast cuts, competitor branding"
-                        disabled={stage === "extracting"}
-                        className={`${inputClass} resize-none overflow-hidden`}
-                      />
-                    </div>
-                    <FileDropzone
-                      label="Tone reference images (optional)"
-                      hint="Upload mood/style references"
-                      files={toneRefFiles}
-                      onAdd={(files) => addFiles(setToneRefFiles, files)}
-                      onRemove={(i) => removeFile(setToneRefFiles, i)}
-                      disabled={stage === "extracting"}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleExtract}
-                  disabled={stage === "extracting"}
-                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-text px-[22px] py-3 text-[14px] font-semibold text-bg transition-colors hover:bg-accent disabled:opacity-70"
-                >
-                  {stage === "extracting" ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Reading your brief...
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight
-                        size={16}
-                        className="transition-transform group-hover:translate-x-0.5"
-                      />
-                    </>
-                  )}
-                </button>
-
-                {isDev && stage === "prompt" && (
-                  <button
-                    type="button"
-                    onClick={handlePreview}
-                    className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-text-dim hover:text-text"
-                  >
-                    <Wand2 size={13} />
-                    Preview with sample data — no tokens used
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-
-          {(stage === "brief" || stage === "generating") && brief && (
-            <>
-              <HistoryCard label="Your request">{prompt}</HistoryCard>
-
-              <div>
-                <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-text-dim uppercase">
-                  Confirm the brief
-                </p>
-                <p className="text-[13px] leading-[1.5] text-text-dim">
-                  Review what Claude picked up on the right — edit anything, then continue.
-                </p>
-              </div>
-
-              <div className="mt-1 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={reset}
-                  disabled={stage === "generating"}
-                  className="inline-flex items-center justify-center rounded-full border border-hair px-4 py-2.5 text-[13px] font-semibold text-text-dim transition-colors hover:border-text/30 hover:text-text disabled:opacity-60"
-                >
-                  Start over
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmBrief}
-                  disabled={stage === "generating"}
-                  className="group inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-text px-4 py-2.5 text-[13px] font-semibold text-bg transition-colors hover:bg-accent disabled:opacity-70"
-                >
-                  {stage === "generating" ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      Writing script...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={15} />
-                      Confirm &amp; generate script
-                    </>
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-
-          {stage === "done" && script && (
-            <>
-              <HistoryCard label="Your request">{prompt}</HistoryCard>
-              {brief && (
-                <HistoryCard label="Brief">
-                  {brief.productName} — {brief.productDescription}
-                </HistoryCard>
-              )}
-
-              <div className="flex items-center gap-2 rounded-full bg-accent-soft px-4 py-2.5 text-[13.5px] font-semibold text-accent">
-                <Sparkles size={16} />
-                {isMock
-                  ? "This is a preview — nothing was saved"
-                  : isFinalized
-                    ? "Finalized"
-                    : "Added to your gallery"}
-              </div>
-
-              <p className="text-[13px] leading-[1.5] text-text-dim">
-                {isFinalized
-                  ? "This script is locked in. Start a new project to keep iterating."
-                  : "Edit any scene on the right, then revise with Claude or finalize when you're happy."}
-              </p>
-
-              <div className="mt-1 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={reset}
-                  disabled={isRevising}
-                  className="inline-flex items-center justify-center rounded-full border border-hair px-4 py-2.5 text-[13px] font-semibold text-text-dim transition-colors hover:border-text/30 hover:text-text disabled:opacity-60"
-                >
-                  Create another
-                </button>
-
-                {!isFinalized && (
-                  <button
-                    type="button"
-                    onClick={handleReviseScript}
-                    disabled={isRevising || revisionsLeft <= 0}
-                    className="group inline-flex items-center gap-2 rounded-full bg-text px-4 py-2.5 text-[13px] font-semibold text-bg transition-colors hover:bg-accent disabled:opacity-70"
-                  >
-                    {isRevising ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <RefreshCw size={14} />
-                    )}
-                    {isRevising
-                      ? "Revising..."
-                      : revisionsLeft > 0
-                        ? `Revise (${revisionsLeft} left)`
-                        : "No revisions left"}
-                  </button>
-                )}
-
-                {!isFinalized ? (
-                  <button
-                    type="button"
-                    onClick={handleFinalize}
-                    disabled={isRevising || isFinalizing}
-                    className="group inline-flex items-center gap-2 rounded-full bg-coral px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#ff7455] disabled:opacity-70"
-                  >
-                    {isFinalizing ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Check size={14} />
-                    )}
-                    {isFinalizing ? "Finalizing..." : "Looks good — finalize"}
-                  </button>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent">
-                    <Check size={15} /> Script finalized
-                  </span>
-                )}
-              </div>
-            </>
-          )}
-
-          {error && <p className="text-[13px] text-coral">{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-coral/30 bg-coral/5 px-4 py-3 text-[13px] leading-[1.5] text-coral"
+        >
+          <span>{error}</span>
+          <button type="button" aria-label="Dismiss" onClick={() => setError("")} className="mt-0.5 shrink-0">
+            <X size={14} />
+          </button>
         </div>
+      )}
 
-        {/* RIGHT — whatever is actively being worked on right now */}
-        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-          {stage === "prompt" && <NextStepsPreview />}
-          {stage === "extracting" && (
-            <ThinkingPanel
-              text={thinking}
-              fallback={BRIEF_STATUS_MESSAGES[statusIndex % BRIEF_STATUS_MESSAGES.length]}
-            />
-          )}
+      {step === 1 && (
+        <DescribeStep
+          form={form}
+          onChange={updateForm}
+          hasProject={!!projectId}
+          isExtracting={isExtracting}
+          thinking={thinking}
+          statusIndex={statusIndex}
+          existingAssetUrls={assetUrls}
+          existingToneUrls={toneUrls}
+          onContinue={handleExtract}
+          onNext={() => showStep(2)}
+          onStartNew={startNew}
+          onPreview={handlePreview}
+        />
+      )}
 
-          {stage === "brief" && brief && (
-            <Panel>
-              <p className="mb-4 text-[11px] font-semibold tracking-wide text-text-dim uppercase">
-                Brief details
-              </p>
-              <div className="flex flex-col gap-3">
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-dim">Product / subject</label>
-                  <input
-                    value={brief.productName}
-                    onChange={(e) => updateBrief("productName", e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
+      {step === 2 && brief && (
+        <BriefStep
+          brief={brief}
+          onChange={updateBrief}
+          hasScript={!!script}
+          isWriting={isWritingScript}
+          locked={isFinalized}
+          thinking={thinking}
+          statusIndex={statusIndex}
+          onGenerateScript={handleGenerateScript}
+          onNext={() => showStep(3)}
+          onBack={() => showStep(1)}
+        />
+      )}
 
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-dim">Description</label>
-                  <AutoTextarea
-                    value={brief.productDescription}
-                    onChange={(e) => updateBrief("productDescription", e.target.value)}
-                    rows={2}
-                    maxHeight={200}
-                    className={`${inputClass} resize-none overflow-hidden`}
-                  />
-                </div>
+      {step === 3 && script && (
+        <ScriptStep
+          script={script}
+          locked={isFinalized}
+          isRevising={isRevising}
+          revisionsLeft={revisionsLeft}
+          thinking={thinking}
+          statusIndex={statusIndex}
+          onVoiceoverScript={(text) => editScript((s) => ({ ...s, voiceoverScript: text }))}
+          onUpdateScene={updateScene}
+          onMoveScene={moveScene}
+          onAddScene={addScene}
+          onRemoveScene={removeScene}
+          onRevise={handleRevise}
+          onNext={() => showStep(4)}
+          onBack={() => showStep(2)}
+        />
+      )}
 
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-dim">Target audience</label>
-                  <input
-                    value={brief.targetAudience}
-                    onChange={(e) => updateBrief("targetAudience", e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
+      {step === 4 && script && (
+        <ImagesStep
+          script={script}
+          isMock={isMock}
+          isGenerating={isGeneratingImages}
+          regeneratingIndex={regeneratingIndex}
+          progress={imageProgress}
+          locked={isFinalized}
+          hasFinalVideo={!!script.finalVideoUrl}
+          hasReferencePhotos={assetUrls.length + toneUrls.length > 0}
+          onUpdateScene={updateScene}
+          onGenerate={handleGenerateImages}
+          onRegenerate={handleRegenerateImage}
+          onNext={() => showStep(5)}
+          onBack={() => showStep(3)}
+        />
+      )}
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-[11px] text-text-dim">Tone</label>
-                    <input
-                      value={brief.tone}
-                      onChange={(e) => updateBrief("tone", e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] text-text-dim">After watching</label>
-                    <input
-                      value={brief.ctaIntent}
-                      onChange={(e) => updateBrief("ctaIntent", e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-dim">
-                    Selling points (one per line)
-                  </label>
-                  <AutoTextarea
-                    value={brief.keySellingPoints.join("\n")}
-                    onChange={(e) =>
-                      updateBrief(
-                        "keySellingPoints",
-                        e.target.value.split("\n").filter((line) => line.trim().length > 0)
-                      )
-                    }
-                    rows={3}
-                    maxHeight={220}
-                    className={`${inputClass} resize-none overflow-hidden`}
-                  />
-                </div>
-              </div>
-            </Panel>
-          )}
-
-          {stage === "generating" && (
-            <ThinkingPanel
-              text={thinking}
-              fallback={SCRIPT_STATUS_MESSAGES[statusIndex % SCRIPT_STATUS_MESSAGES.length]}
-            />
-          )}
-
-          {stage === "done" && script && (
-            <>
-              {isRevising && (
-                <ThinkingPanel
-                  text={thinking}
-                  fallback={SCRIPT_STATUS_MESSAGES[statusIndex % SCRIPT_STATUS_MESSAGES.length]}
-                />
-              )}
-
-              <Panel>
-                {script.voiceoverScript !== null ? (
-                  <div className="mb-5">
-                    <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-text-dim uppercase">
-                      Voiceover script
-                    </p>
-                    <AutoTextarea
-                      value={script.voiceoverScript}
-                      onChange={(e) =>
-                        setScript((prev) =>
-                          prev ? { ...prev, voiceoverScript: e.target.value } : prev
-                        )
-                      }
-                      disabled={scenesLocked}
-                      rows={3}
-                      maxHeight={200}
-                      className={`${inputClass} resize-none overflow-hidden italic`}
-                    />
-                  </div>
-                ) : (
-                  <div className="mb-5 rounded-lg border border-dashed border-hair px-3.5 py-2.5 text-[12.5px] text-text-dim">
-                    No voiceover for this video — visual only.
-                  </div>
-                )}
-
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[11px] font-semibold tracking-wide text-text-dim uppercase">
-                    Scenes
-                  </p>
-                  <span className="font-mono text-[11.5px] text-text-dim">
-                    {totalDuration}s total
-                  </span>
-                </div>
-                <p className="mb-3 text-[12px] leading-[1.5] text-text-dim">
-                  Every field below is editable — shot type, duration, description, voiceover.
-                  Changes apply next time you revise.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={handleGenerateImages}
-                  disabled={scenesLocked || isGeneratingImages}
-                  className="mb-3 inline-flex items-center gap-2 self-start rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
-                >
-                  {isGeneratingImages ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      {`Generating ${imageProgress.done}/${imageProgress.total}…`}
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon size={13} />
-                      {script.scenes.some((s) => s.imageUrl)
-                        ? "Regenerate reference images"
-                        : "Generate reference images"}
-                    </>
-                  )}
-                </button>
-
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGenerateVideos}
-                    disabled={scenesLocked || isGeneratingVideos}
-                    className="inline-flex items-center gap-2 rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
-                  >
-                    {isGeneratingVideos ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" />
-                        Generating video…
-                      </>
-                    ) : (
-                      <>
-                        <Video size={13} />
-                        {script.scenes.some((s) => s.videoUrl)
-                          ? "Regenerate scene videos"
-                          : "Generate scene videos"}
-                      </>
-                    )}
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {VIDEO_RESOLUTION_OPTIONS.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        disabled={scenesLocked || isGeneratingVideos}
-                        onClick={() => setVideoResolution(r)}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
-                          videoResolution === r
-                            ? "border-text bg-text text-bg"
-                            : "border-hair text-text-dim hover:border-text/30 hover:text-text"
-                        }`}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="text-[11.5px] text-text-dim">
-                    ~${estimateVideoCost(script.scenes, videoResolution)}
-                  </span>
-                </div>
-
-                {script.scenes.every((s) => s.videoUrl) && (
-                  <div className="mb-3">
-                    <button
-                      type="button"
-                      onClick={handleStitchVideos}
-                      disabled={scenesLocked || isStitching || isGeneratingVideos}
-                      className="inline-flex items-center gap-2 rounded-full border border-hair px-3.5 py-2 text-[12.5px] font-semibold text-text transition-colors hover:border-text/30 disabled:opacity-60"
-                    >
-                      {isStitching ? (
-                        <>
-                          <Loader2 size={13} className="animate-spin" />
-                          Stitching scenes together…
-                        </>
-                      ) : (
-                        <>
-                          <Film size={13} />
-                          {script.finalVideoUrl ? "Re-stitch final video" : "Stitch into one video"}
-                        </>
-                      )}
-                    </button>
-
-                    {script.finalVideoUrl && (
-                      <div className="mt-3 overflow-hidden rounded-lg border border-hair bg-panel-2">
-                        {isMock ? (
-                          <div className="flex aspect-video items-center justify-center text-[12px] font-semibold text-text-dim">
-                            Preview — final video would appear here
-                          </div>
-                        ) : (
-                          <video src={script.finalVideoUrl} controls className="w-full" />
-                        )}
-                        {!isMock && (
-                          <a
-                            href={downloadHref(script.finalVideoUrl, "final-video.mp4")}
-                            className="flex items-center justify-center gap-1.5 border-t border-hair px-3 py-2 text-[12px] font-semibold text-text-dim transition-colors hover:text-text"
-                          >
-                            <Download size={12} />
-                            Download final video
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-2.5">
-                  {script.scenes.map((scene, i) => (
-                    <div
-                      key={scene.order}
-                      className={`rounded-xl border border-hair bg-panel p-3 transition-opacity ${
-                        scenesLocked ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className="relative mb-2 aspect-video w-full overflow-hidden rounded-lg bg-panel-2">
-                        {scene.videoUrl ? (
-                          isMock ? (
-                            <div
-                              className="flex h-full w-full items-center justify-center text-center text-[11px] font-semibold text-white"
-                              style={{ background: scene.imageUrl || undefined }}
-                            >
-                              Preview — video would appear here
-                            </div>
-                          ) : (
-                            <video src={scene.videoUrl} controls className="h-full w-full object-cover" />
-                          )
-                        ) : scene.videoStatus === "queued" || scene.videoStatus === "in_progress" ? (
-                          <div className="flex h-full flex-col items-center justify-center gap-1.5 text-text-dim/60">
-                            <Loader2 size={18} className="animate-spin" />
-                            <span className="text-[10px] font-semibold tracking-wide uppercase">
-                              {scene.videoStatus === "queued" ? "Queued" : "Generating…"}
-                            </span>
-                          </div>
-                        ) : scene.imageUrl ? (
-                          isMock ? (
-                            <div className="h-full w-full" style={{ background: scene.imageUrl }} />
-                          ) : (
-                            <Image
-                              src={scene.imageUrl}
-                              alt={`Scene ${scene.order} reference`}
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                          )
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-text-dim/40">
-                            {isGeneratingImages ? (
-                              <Loader2 size={18} className="animate-spin" />
-                            ) : (
-                              <ImageIcon size={18} />
-                            )}
-                          </div>
-                        )}
-                        {scene.videoStatus === "failed" && (
-                          <div className="absolute bottom-1 left-1 rounded bg-coral/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            Video failed
-                          </div>
-                        )}
-                        {scene.videoUrl && !isMock && (
-                          <a
-                            href={downloadHref(scene.videoUrl, `scene-${scene.order}.mp4`)}
-                            aria-label={`Download scene ${scene.order} video`}
-                            className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-                          >
-                            <Download size={12} />
-                          </a>
-                        )}
-                      </div>
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="font-mono text-[11px] font-medium text-accent">
-                          {String(scene.order).padStart(2, "0")}
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <label className="text-[9px] font-semibold tracking-wide text-text-dim/70 uppercase">
-                            Shot type
-                          </label>
-                          <div className="relative">
-                            <input
-                              value={scene.shotType}
-                              onChange={(e) => updateScene(i, "shotType", e.target.value)}
-                              disabled={scenesLocked}
-                              className="w-32 rounded-full border border-hair bg-bg py-1 pr-6 pl-2.5 text-[11px] font-semibold tracking-wide text-accent uppercase outline-none focus:border-accent disabled:opacity-60"
-                            />
-                            <Pencil
-                              size={10}
-                              className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-accent/50"
-                            />
-                          </div>
-                        </div>
-                        <div className="ml-auto">
-                          <DurationStepper
-                            value={scene.duration}
-                            onChange={(v) => updateScene(i, "duration", v)}
-                            disabled={scenesLocked}
-                          />
-                        </div>
-                      </div>
-                      <AutoTextarea
-                        value={scene.description}
-                        onChange={(e) => updateScene(i, "description", e.target.value)}
-                        disabled={scenesLocked}
-                        rows={2}
-                        maxHeight={160}
-                        placeholder="What's happening in this shot"
-                        className="mb-1.5 w-full resize-none overflow-hidden rounded-lg border border-hair bg-bg px-2.5 py-2 text-[13px] leading-[1.5] text-text-dim outline-none transition-colors placeholder:text-text-dim/60 focus:border-accent disabled:opacity-60"
-                      />
-                      {scene.voiceover !== null && (
-                        <AutoTextarea
-                          value={scene.voiceover}
-                          onChange={(e) => updateScene(i, "voiceover", e.target.value)}
-                          disabled={scenesLocked}
-                          rows={1}
-                          maxHeight={140}
-                          placeholder="Voiceover line for this scene"
-                          className="w-full resize-none overflow-hidden rounded-lg border border-hair bg-bg px-2.5 py-2 text-[12.5px] leading-[1.5] text-text-dim italic outline-none transition-colors placeholder:text-text-dim/60 placeholder:not-italic focus:border-accent disabled:opacity-60"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            </>
-          )}
-        </div>
-      </div>
+      {step === 5 && script && (
+        <VideoStep
+          script={script}
+          brief={brief}
+          form={form}
+          isMock={isMock}
+          isGenerating={isGeneratingVideos}
+          isStitching={isStitching}
+          isFinalizing={isFinalizing}
+          isFinalized={isFinalized}
+          onResolution={(r) => updateForm({ resolution: r })}
+          onGenerate={handleGenerateVideos}
+          onStitch={() => projectId && runStitch(projectId)}
+          onFinalize={handleFinalize}
+          onGoToStep={goToStep}
+          onStartNew={startNew}
+          onBack={() => showStep(4)}
+        />
+      )}
     </div>
   );
 }

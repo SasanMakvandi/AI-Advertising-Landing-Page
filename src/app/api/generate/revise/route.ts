@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { anthropic, GENERATION_MODEL } from "@/lib/anthropic";
 import { BriefSchema, ScriptSchema, MAX_REVISIONS } from "@/lib/generation-schemas";
 import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
+import { deDashDeep, NO_DASHES_RULE, SAFE_CONTENT_RULE } from "@/lib/text";
+import { setProjectStatus } from "@/lib/project-status";
+import { assetUrlsOf, deleteBlobs, parseStoredScript } from "@/lib/blob-assets";
 
 export async function POST(request: Request) {
   if (!isAiEnabled()) return aiDisabledResponse();
@@ -42,8 +45,8 @@ export async function POST(request: Request) {
   const editedScript = scriptInput.data;
 
   const voiceoverInstruction = project.wantsVoiceover
-    ? "This video has a voiceover — keep voiceoverScript and every scene's voiceover populated."
-    : "This video has NO voiceover — keep voiceoverScript and every scene's voiceover null.";
+    ? "This video has a voiceover. Keep voiceoverScript and every scene's voiceover populated."
+    : "This video has NO voiceover. Keep voiceoverScript and every scene's voiceover null.";
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
           max_tokens: 4096,
           thinking: { type: "adaptive", display: "summarized" },
           system:
-            `You're refining an existing ad script based on a human editor's changes. The editor has already hand-edited some scene descriptions and/or voiceover lines below — keep their intent and their specific wording where possible, but tighten the overall flow, fix any timing/continuity issues between scenes, and make sure the voiceoverScript still reads as one smooth line combining every scene's voiceover in order. Keep the same number of scenes and roughly the same total duration unless the edits clearly require otherwise. ${voiceoverInstruction}`,
+            `You're refining an existing ad script based on a human editor's changes. The editor has already hand-edited some scene descriptions and/or voiceover lines below — keep their intent and their specific wording where possible, but tighten the overall flow, fix any timing/continuity issues between scenes, and make sure the voiceoverScript still reads as one smooth line combining every scene's voiceover in order. Keep the same number of scenes and roughly the same total duration unless the edits clearly require otherwise (if the editor added or removed scenes, keep their structure). ${voiceoverInstruction} ${NO_DASHES_RULE} ${SAFE_CONTENT_RULE}`,
           messages: [
             {
               role: "user",
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
         if (!textBlock || textBlock.type !== "text") {
           throw new Error("Claude did not return a parseable script");
         }
-        const script = ScriptSchema.parse(JSON.parse(textBlock.text));
+        const script = deDashDeep(ScriptSchema.parse(JSON.parse(textBlock.text)));
 
         const updated = await prisma.project.update({
           where: { id: projectId },
@@ -88,6 +91,11 @@ export async function POST(request: Request) {
             revisionCount: { increment: 1 },
           },
         });
+        await setProjectStatus(projectId, "script_ready");
+
+        // The scenes changed, so images and clips made from the old ones are
+        // stale. Free their storage.
+        await deleteBlobs(assetUrlsOf(parseStoredScript(project.scriptJson)));
 
         send({
           type: "result",
@@ -97,7 +105,7 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         console.error("script revision failed:", err);
-        send({ type: "error", message: "Couldn't revise the script — please try again." });
+        send({ type: "error", message: "Couldn't revise the script. Please try again." });
       } finally {
         controller.close();
       }

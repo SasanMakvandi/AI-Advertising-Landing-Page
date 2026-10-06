@@ -5,6 +5,7 @@ import { anthropic, GENERATION_MODEL } from "@/lib/anthropic";
 import { BriefSchema } from "@/lib/generation-schemas";
 import { saveUploadedImages } from "@/lib/uploads";
 import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
+import { deDashDeep, NO_DASHES_RULE, SAFE_CONTENT_RULE } from "@/lib/text";
 
 export async function POST(request: Request) {
   if (!isAiEnabled()) return aiDisabledResponse();
@@ -72,7 +73,10 @@ export async function POST(request: Request) {
           max_tokens: 4096,
           thinking: { type: "adaptive", display: "summarized" },
           system:
-            "You turn a short, sometimes vague description of an ad request into a structured creative brief. Infer sensible details where the input doesn't spell them out, but don't invent specific facts (like exact prices) that aren't stated or clearly implied." +
+            "You turn a short, sometimes vague description of an ad request into a structured creative brief. Infer sensible details where the input doesn't spell them out, but don't invent specific facts (like exact prices) that aren't stated or clearly implied. The productName becomes the project's title, so keep it short (a few words). " +
+            NO_DASHES_RULE +
+            " " +
+            SAFE_CONTENT_RULE +
             (negativePrompt ? ` The advertiser wants to avoid: ${negativePrompt}.` : ""),
           messages: [{ role: "user", content: prompt }],
           output_config: { format: zodOutputFormat(BriefSchema), effort: "high" },
@@ -89,20 +93,33 @@ export async function POST(request: Request) {
         if (!textBlock || textBlock.type !== "text") {
           throw new Error("Claude did not return a parseable brief");
         }
-        const brief = BriefSchema.parse(JSON.parse(textBlock.text));
+        const brief = deDashDeep(BriefSchema.parse(JSON.parse(textBlock.text)));
 
         await prisma.project.update({
           where: { id: project.id },
           data: { briefJson: JSON.stringify(brief), status: "brief_ready" },
         });
 
-        send({ type: "result", projectId: project.id, brief });
+        // The project name is generated here, right after the first step, and
+        // the project lands in the gallery so it can be resumed from there.
+        await prisma.galleryItem.upsert({
+          where: { projectId: project.id },
+          create: {
+            userId: session.user!.id,
+            title: brief.productName,
+            status: "brief_ready",
+            projectId: project.id,
+          },
+          update: { title: brief.productName, status: "brief_ready" },
+        });
+
+        send({ type: "result", projectId: project.id, brief, assetUrls, toneReferenceUrls });
       } catch (err) {
         await prisma.project
           .update({ where: { id: project.id }, data: { status: "error" } })
           .catch(() => {});
         console.error("brief extraction failed:", err);
-        send({ type: "error", message: "Couldn't generate a brief — please try again." });
+        send({ type: "error", message: "Couldn't generate a brief. Please try again." });
       } finally {
         controller.close();
       }

@@ -3,27 +3,105 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { CreatePanel } from "@/components/CreatePanel";
+import { Gallery, type GalleryCard } from "@/components/Gallery";
+import type { InitialProject } from "@/components/create/types";
 import { isAiEnabled } from "@/lib/features";
+import { BriefSchema } from "@/lib/generation-schemas";
+import { parseStoredScript } from "@/lib/blob-assets";
+import { isFinishedStatus, statusLabel } from "@/lib/project-status";
 
 export const metadata: Metadata = {
-  title: "Dashboard — ReelSimple",
+  title: "Dashboard | ReelSimple",
 };
 
-const CARD_GRADIENTS = [
-  "linear-gradient(135deg, #4B4EFF, #211E19)",
-  "linear-gradient(135deg, #FF5C39, #4B4EFF)",
-  "linear-gradient(135deg, #E4DECF, #FF5C39)",
-  "linear-gradient(135deg, #211E19, #4B4EFF)",
-];
+function parseUrlList(json: string | null): string[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed.filter((u): u is string => typeof u === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
-export default async function DashboardPage() {
+function parseBrief(json: string | null) {
+  if (!json) return null;
+  try {
+    const parsed = BriefSchema.safeParse(JSON.parse(json));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const items = await prisma.galleryItem.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const { project: projectParam } = await searchParams;
+  const aiEnabled = isAiEnabled();
+  const userId = session.user.id;
+
+  const [items, selected] = await Promise.all([
+    prisma.galleryItem.findMany({
+      where: { userId },
+      include: {
+        project: { select: { prompt: true, briefJson: true, scriptJson: true, updatedAt: true } },
+      },
+    }),
+    aiEnabled && projectParam
+      ? prisma.project.findFirst({ where: { id: projectParam, userId } })
+      : null,
+  ]);
+
+  const initialProject: InitialProject | null = selected
+    ? {
+        id: selected.id,
+        prompt: selected.prompt,
+        wantsVoiceover: selected.wantsVoiceover,
+        wantsSubtitles: selected.wantsSubtitles,
+        duration: selected.duration,
+        aspectRatio: selected.aspectRatio,
+        resolution: selected.resolution,
+        negativePrompt: selected.negativePrompt,
+        assetUrls: parseUrlList(selected.assetUrls),
+        toneReferenceUrls: parseUrlList(selected.toneReferenceUrls),
+        brief: parseBrief(selected.briefJson),
+        script: parseStoredScript(selected.scriptJson),
+        revisionCount: selected.revisionCount,
+        status: selected.status,
+      }
+    : null;
+
+  const cards: GalleryCard[] = items
+    .map((item) => {
+      const script = parseStoredScript(item.project?.scriptJson);
+      const images = (script?.scenes ?? [])
+        .map((s) => s.imageUrl)
+        .filter((u): u is string => !!u);
+      const brief = parseBrief(item.project?.briefJson ?? null);
+      const updatedAt = (item.project?.updatedAt ?? item.createdAt).toISOString();
+      return {
+        id: item.id,
+        projectId: item.projectId,
+        title: item.title,
+        statusLabel: statusLabel(item.status),
+        finished: isFinishedStatus(item.status),
+        // A different scene image every time the page loads.
+        thumbImageUrl: images.length ? images[Math.floor(Math.random() * images.length)] : null,
+        videoUrl: script?.finalVideoUrl ?? null,
+        updatedAt,
+        searchText: [item.title, item.project?.prompt, brief?.productDescription, brief?.tone]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      };
+    })
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const firstName = session.user.name?.split(" ")[0];
 
@@ -52,8 +130,8 @@ export default async function DashboardPage() {
       </div>
 
       <section className="mx-auto mb-12 max-w-[1200px] px-6 lg:px-12">
-        {isAiEnabled() ? (
-          <CreatePanel />
+        {aiEnabled ? (
+          <CreatePanel key={initialProject?.id ?? "new"} initialProject={initialProject} />
         ) : (
           <div className="rounded-[28px] border border-hair bg-panel p-8 shadow-[0_1px_2px_rgba(33,30,25,0.05),0_16px_36px_rgba(33,30,25,0.08)] sm:p-12">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-[12px] font-semibold text-accent">
@@ -64,46 +142,23 @@ export default async function DashboardPage() {
             </h2>
             <p className="max-w-[560px] text-[15px] leading-[1.5] text-text-dim">
               Your account is set up and ready. We&apos;re putting the finishing touches on the
-              creation tools — you&apos;ll be able to describe a video here and watch it come to
-              life very soon.
+              creation tools. You&apos;ll be able to describe a video here and watch it come to life
+              very soon.
             </p>
           </div>
         )}
       </section>
 
       <section className="mx-auto max-w-[1200px] px-6 lg:px-12">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-serif text-xl font-semibold text-text">Your gallery</h2>
-          <span className="text-[13px] text-text-dim">
-            {items.length} {items.length === 1 ? "item" : "items"}
-          </span>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="rounded-[28px] border border-dashed border-hair bg-panel p-12 text-center">
-            <p className="mb-2 text-lg font-medium text-text">Nothing here yet</p>
-            <p className="text-sm text-text-dim">
-              {isAiEnabled()
-                ? "Use the panel above to create your first video."
-                : "Your videos will show up here once creation opens up."}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
-            {items.map((item, i) => (
-              <div key={item.id} className="overflow-hidden rounded-2xl border border-hair bg-panel">
-                <div
-                  className="aspect-[3/4]"
-                  style={{ background: CARD_GRADIENTS[i % CARD_GRADIENTS.length] }}
-                />
-                <div className="p-3">
-                  <p className="truncate text-sm font-medium text-text">{item.title}</p>
-                  <p className="text-xs text-text-dim capitalize">{item.status}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <Gallery
+          cards={cards}
+          canResume={aiEnabled}
+          emptyText={
+            aiEnabled
+              ? "Start a project above and it will show up here, ready to pick back up any time."
+              : "Your videos will show up here once creation opens up."
+          }
+        />
       </section>
     </div>
   );

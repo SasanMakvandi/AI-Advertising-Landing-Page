@@ -82,16 +82,16 @@ export function Signup() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Something went wrong — please try again.");
+        throw new Error(body.error || "Something went wrong. Please try again.");
       }
 
       const signInRes = await signIn("credentials", { email, password, redirect: false });
-      if (signInRes?.error) throw new Error("Account created — please log in.");
+      if (signInRes?.error) throw new Error("Account created. Please log in.");
 
       router.push("/dashboard");
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Something went wrong — please try again.");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
   }
 
@@ -107,7 +107,7 @@ export function Signup() {
           Start your project
         </h1>
         <p className="mt-4 text-base leading-relaxed text-text-dim">
-          A few details so we can tailor content to your brand — then you&apos;re
+          A few details so we can tailor content to your brand. Then you&apos;re
           ready to start creating.
         </p>
 
@@ -226,7 +226,7 @@ export function Signup() {
           {step === 3 && (
             <>
               <p className="text-[13px] text-text-dim">
-                Optional — add these now, or skip and set them up later.
+                Optional. Add these now, or skip and set them up later.
               </p>
 
               <input

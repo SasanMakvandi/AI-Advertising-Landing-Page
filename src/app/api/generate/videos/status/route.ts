@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
-import { put, del } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getVideoJobStatus } from "@/lib/apiframe";
 import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
+import { setProjectStatus } from "@/lib/project-status";
 import { ScriptWithImagesSchema } from "@/lib/generation-schemas";
 
 export async function GET(request: Request) {
@@ -52,16 +53,11 @@ export async function GET(request: Request) {
             contentType: "video/mp4",
           });
           changed = true;
-          // The reference image was only ever needed as this video's
-          // starting frame — once the video exists, drop it to save space.
-          if (scene.imageUrl) {
-            await del(scene.imageUrl).catch((err) => {
-              console.error(`couldn't delete reference image for scene ${scene.order}:`, err);
-            });
-          }
+          // The scene's reference image is kept: generated images are stored
+          // with the project. Only uploaded photos are cleaned up, once the
+          // finished video exists.
           return {
             ...scene,
-            imageUrl: null,
             videoUrl: blob.url,
             videoJobId: null,
             videoStatus: "completed" as const,
@@ -70,16 +66,29 @@ export async function GET(request: Request) {
 
         if (jobStatus.status === "FAILED") {
           changed = true;
-          return { ...scene, videoJobId: null, videoStatus: "failed" as const };
+          return {
+            ...scene,
+            videoJobId: null,
+            videoStatus: "failed" as const,
+            videoError: jobStatus.error ?? "ApiFrame reported this scene as failed.",
+          };
         }
 
         const status = jobStatus.status === "IN_PROGRESS" ? "in_progress" : "queued";
         if (scene.videoStatus !== status) changed = true;
         return { ...scene, videoStatus: status as "queued" | "in_progress" };
       } catch (err) {
+        // Our own hiccup (network, download, Blob upload), not ApiFrame
+        // reporting a failure. The job may still be running or finished and
+        // billed, so keep its id and try again on the next poll. Dropping it
+        // here would make "retry" pay for a second job on the same scene.
         console.error(`video status check failed for scene ${scene.order}:`, err);
-        changed = true;
-        return { ...scene, videoJobId: null, videoStatus: "failed" as const };
+        if (err instanceof Error && err.message.includes("(404)")) {
+          // ApiFrame doesn't know this job, so there is nothing left to wait for.
+          changed = true;
+          return { ...scene, videoJobId: null, videoStatus: "failed" as const };
+        }
+        return scene;
       }
     })
   );
@@ -88,13 +97,16 @@ export async function GET(request: Request) {
 
   if (changed) {
     const stillPending = scenes.some((s) => s.videoJobId);
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
+    if (stillPending) {
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { scriptJson: JSON.stringify(updatedScript) },
+      });
+    } else {
+      await setProjectStatus(projectId, "videos_ready", {
         scriptJson: JSON.stringify(updatedScript),
-        ...(stillPending ? {} : { status: "videos_ready" }),
-      },
-    });
+      });
+    }
   }
 
   return new Response(JSON.stringify({ script: updatedScript }), {

@@ -42,7 +42,7 @@ export async function generateSceneImage({
   // message instead.
   if (/[^\x00-\xFF]/.test(apiKey)) {
     throw new Error(
-      "COMETAPI_KEY contains a character that isn't valid in an HTTP header — it was likely corrupted when pasted into Vercel's environment variables. Re-copy and re-paste the key value."
+      "COMETAPI_KEY contains a character that isn't valid in an HTTP header. It was likely corrupted when pasted into Vercel's environment variables. Re-copy and re-paste the key value."
     );
   }
 

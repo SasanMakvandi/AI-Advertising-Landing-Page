@@ -2,13 +2,28 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createVideoJob } from "@/lib/apiframe";
 import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
-import { ScriptWithImagesSchema, type Brief, type SceneWithImage } from "@/lib/generation-schemas";
+import { setProjectStatus } from "@/lib/project-status";
+import {
+  deleteBlobs,
+  parseStoredScript,
+  sanitizeScriptAssets,
+  videoUrlsOf,
+} from "@/lib/blob-assets";
+import {
+  ScriptWithImagesSchema,
+  type Brief,
+  type SceneWithImage,
+} from "@/lib/generation-schemas";
 
-function buildScenePrompt(scene: SceneWithImage, brief: Brief | null) {
+const RESOLUTIONS = ["480p", "720p", "1080p"] as const;
+type Resolution = (typeof RESOLUTIONS)[number];
+
+function buildScenePrompt(scene: SceneWithImage, brief: Brief | null, negativePrompt: string | null) {
   const productContext = brief
-    ? ` Product: ${brief.productName} — ${brief.productDescription}. Tone: ${brief.tone}.`
+    ? ` Product: ${brief.productName}. ${brief.productDescription}. Tone: ${brief.tone}.`
     : "";
-  return `${scene.shotType} shot. ${scene.description}.${productContext}`;
+  const avoid = negativePrompt ? ` Avoid: ${negativePrompt}.` : "";
+  return `${scene.shotType} shot. ${scene.description}.${productContext}${avoid}`;
 }
 
 export async function POST(request: Request) {
@@ -21,7 +36,12 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const projectId = body?.projectId as string | undefined;
-  const resolution = (body?.resolution as string | undefined) ?? "480p";
+  const requested = body?.resolution as string | undefined;
+  const resolution: Resolution = RESOLUTIONS.includes(requested as Resolution)
+    ? (requested as Resolution)
+    : "480p";
+  // Retry mode: only scenes that don't have a clip yet get a new (billed) job.
+  const onlyMissing = body?.onlyMissing === true;
   const scriptInput = ScriptWithImagesSchema.safeParse(body?.script);
 
   if (!projectId || !scriptInput.success) {
@@ -35,47 +55,77 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "Project not found" }), { status: 404 });
   }
 
-  const script = scriptInput.data;
+  const stored = parseStoredScript(project.scriptJson);
+  const script = sanitizeScriptAssets(scriptInput.data, stored);
   const brief: Brief | null = project.briefJson ? JSON.parse(project.briefJson) : null;
 
-  // Each scene's job is created independently — if one fails partway through
-  // the batch, the jobs already started for other scenes are real, billed
-  // work on ApiFrame's side, so we still persist and track them rather than
-  // discarding everything on the first error.
+  // The previous final video (if any) will no longer match, and a full rerun
+  // replaces the old clips too. Free that storage.
+  await deleteBlobs(onlyMissing ? [stored?.finalVideoUrl] : videoUrlsOf(stored));
+
   let firstError: string | null = null;
-  const scenesWithJobs: SceneWithImage[] = [];
+  let started = 0;
+  const scenes: SceneWithImage[] = [];
   for (const scene of script.scenes) {
+    const base: SceneWithImage = onlyMissing
+      ? { ...scene }
+      : { ...scene, videoUrl: null, videoJobId: null, videoStatus: null };
+
+    if (base.videoUrl) {
+      scenes.push(base);
+      continue;
+    }
+
+    // One scene failing shouldn't discard jobs already started (and billed)
+    // for the others, so each is tracked independently.
     try {
       const { jobId } = await createVideoJob({
-        prompt: buildScenePrompt(scene, brief),
-        startImageUrl: scene.imageUrl,
-        duration: scene.duration,
-        resolution: resolution as "480p" | "720p" | "1080p" | "4k",
+        prompt: buildScenePrompt(base, brief, project.negativePrompt),
+        startImageUrl: base.imageUrl,
+        duration: base.duration,
+        resolution,
         aspectRatio: project.aspectRatio,
       });
-      scenesWithJobs.push({ ...scene, videoJobId: jobId, videoStatus: "queued", videoUrl: null });
+      started++;
+      scenes.push({
+        ...base,
+        videoJobId: jobId,
+        videoStatus: "queued",
+        videoUrl: null,
+        videoError: null,
+      });
     } catch (err) {
       console.error(`video job creation failed for scene ${scene.order}:`, err);
-      firstError ??= err instanceof Error ? err.message : "Couldn't start video generation";
-      scenesWithJobs.push({ ...scene, videoJobId: null, videoStatus: "failed", videoUrl: null });
+      const message = err instanceof Error ? err.message : "Couldn't start video generation";
+      firstError ??= message;
+      scenes.push({
+        ...base,
+        videoJobId: null,
+        videoStatus: "failed",
+        videoUrl: null,
+        videoError: message,
+      });
     }
   }
 
-  const scriptWithJobs = { ...script, scenes: scenesWithJobs };
-
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { scriptJson: JSON.stringify(scriptWithJobs), status: "videos_generating" },
+  const updated = {
+    ...script,
+    finalVideoUrl: null,
+    videoStartedAt: started > 0 ? Date.now() : null,
+    scenes,
+  };
+  await setProjectStatus(projectId, started > 0 ? "videos_generating" : project.status, {
+    scriptJson: JSON.stringify(updated),
   });
 
   if (firstError) {
-    return new Response(JSON.stringify({ error: firstError, script: scriptWithJobs }), {
+    return new Response(JSON.stringify({ error: firstError, script: updated }), {
       status: 502,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  return new Response(JSON.stringify({ script: scriptWithJobs }), {
+  return new Response(JSON.stringify({ script: updated }), {
     headers: { "Content-Type": "application/json" },
   });
 }

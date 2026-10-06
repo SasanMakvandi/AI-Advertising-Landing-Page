@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { anthropic, GENERATION_MODEL } from "@/lib/anthropic";
 import { BriefSchema, ScriptSchema, MAX_REVISIONS } from "@/lib/generation-schemas";
 import { isAiEnabled, aiDisabledResponse } from "@/lib/features";
+import { deDashDeep, NO_DASHES_RULE, SAFE_CONTENT_RULE } from "@/lib/text";
+import { setProjectStatus } from "@/lib/project-status";
+import { assetUrlsOf, deleteBlobs, parseStoredScript } from "@/lib/blob-assets";
 
 export async function POST(request: Request) {
   if (!isAiEnabled()) return aiDisabledResponse();
@@ -30,16 +33,13 @@ export async function POST(request: Request) {
 
   const brief = briefInput.data;
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { briefJson: JSON.stringify(brief), status: "generating_script" },
-  });
+  await setProjectStatus(projectId, "generating_script", { briefJson: JSON.stringify(brief) });
 
   const voiceoverInstruction = project.wantsVoiceover
     ? project.wantsSubtitles
-      ? "This video needs a voiceover, and its captions/subtitles will be burned in matching the voiceover word-for-word — so keep lines short and easy to read on screen."
+      ? "This video needs a voiceover, and its captions/subtitles will be burned in matching the voiceover word-for-word, so keep lines short and easy to read on screen."
       : "This video needs a voiceover (no on-screen subtitles)."
-    : "This video has NO voiceover — it's visual-only. Set voiceoverScript and every scene's voiceover to null, and lean on the visual descriptions to carry the story.";
+    : "This video has NO voiceover. It's visual-only. Set voiceoverScript and every scene's voiceover to null, and lean on the visual descriptions to carry the story.";
 
   const targetScenes = Math.max(2, Math.round(project.duration / 5));
   const negativeInstruction = project.negativePrompt
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
           max_tokens: 4096,
           thinking: { type: "adaptive", display: "summarized" },
           system:
-            `You write short-form video ad scripts, framed for a ${project.aspectRatio} video. Given a creative brief, return a scene-by-scene shot list whose durations sum to approximately ${project.duration} seconds total, in roughly ${targetScenes} scenes, unless the brief clearly calls for something else. ${voiceoverInstruction} When there is a voiceover, each scene's voiceover line should be a slice of the full voiceoverScript, in order, covering it exactly with no gaps or repeats.${negativeInstruction}`,
+            `You write short-form video ad scripts, framed for a ${project.aspectRatio} video. Given a creative brief, return a scene-by-scene shot list whose durations sum to approximately ${project.duration} seconds total, in roughly ${targetScenes} scenes, unless the brief clearly calls for something else. ${voiceoverInstruction} When there is a voiceover, each scene's voiceover line should be a slice of the full voiceoverScript, in order, covering it exactly with no gaps or repeats.${negativeInstruction} ${NO_DASHES_RULE} ${SAFE_CONTENT_RULE}`,
           messages: [
             { role: "user", content: `Creative brief:\n${JSON.stringify(brief, null, 2)}` },
           ],
@@ -77,14 +77,12 @@ export async function POST(request: Request) {
         if (!textBlock || textBlock.type !== "text") {
           throw new Error("Claude did not return a parseable script");
         }
-        const script = ScriptSchema.parse(JSON.parse(textBlock.text));
+        const script = deDashDeep(ScriptSchema.parse(JSON.parse(textBlock.text)));
 
-        await prisma.project.update({
-          where: { id: projectId },
-          data: { scriptJson: JSON.stringify(script), status: "script_ready" },
+        await setProjectStatus(projectId, "script_ready", {
+          scriptJson: JSON.stringify(script),
         });
-
-        const galleryItem = await prisma.galleryItem.upsert({
+        await prisma.galleryItem.upsert({
           where: { projectId },
           create: {
             userId: session.user!.id,
@@ -92,16 +90,25 @@ export async function POST(request: Request) {
             status: "script_ready",
             projectId,
           },
-          update: { title: brief.productName, status: "script_ready" },
+          update: { title: brief.productName },
         });
 
-        send({ type: "result", projectId, script, galleryItem, revisionsLeft: MAX_REVISIONS });
+        // A regenerated script replaces everything built from the old one.
+        await deleteBlobs(assetUrlsOf(parseStoredScript(project.scriptJson)));
+
+        send({
+          type: "result",
+          projectId,
+          script,
+          revisionsLeft: Math.max(0, MAX_REVISIONS - project.revisionCount),
+        });
       } catch (err) {
-        await prisma.project
-          .update({ where: { id: projectId }, data: { status: "error" } })
-          .catch(() => {});
+        // Fall back to the last good state so the project stays resumable.
+        await setProjectStatus(projectId, project.scriptJson ? "script_ready" : "brief_ready").catch(
+          () => {}
+        );
         console.error("script generation failed:", err);
-        send({ type: "error", message: "Couldn't generate a script — please try again." });
+        send({ type: "error", message: "Couldn't generate a script. Please try again." });
       } finally {
         controller.close();
       }

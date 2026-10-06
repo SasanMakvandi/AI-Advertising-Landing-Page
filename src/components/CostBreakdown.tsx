@@ -59,7 +59,7 @@ export function CostBreakdown() {
             className="border-b border-hair py-5 text-center last:border-b-0"
           >
             <span className="text-[15.5px] font-medium text-text">{item.label}</span>
-            <span className="mx-2 text-text-dim">—</span>
+            <span className="mx-2 text-text-dim">·</span>
             <StrikeText delay={i * 0.12 + 0.35} className="font-mono text-sm text-text-dim">
               {item.cost}
             </StrikeText>

@@ -4,7 +4,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { about, values, team } from "@/lib/content";
 
 export const metadata: Metadata = {
-  title: "About — ReelSimple",
+  title: "About | ReelSimple",
   description: "Why ReelSimple exists, how we work, and who's behind it.",
 };
 

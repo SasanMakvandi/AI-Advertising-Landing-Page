@@ -1,6 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ScriptWithImagesSchema } from "@/lib/generation-schemas";
+import {
+  deleteUploadedReferences,
+  parseStoredScript,
+  sanitizeScriptAssets,
+} from "@/lib/blob-assets";
+import { setProjectStatus } from "@/lib/project-status";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -23,17 +29,14 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "Project not found" }), { status: 404 });
   }
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { scriptJson: JSON.stringify(scriptInput.data), status: "finalized" },
+  const script = sanitizeScriptAssets(scriptInput.data, parseStoredScript(project.scriptJson));
+  await setProjectStatus(projectId, "finalized", { scriptJson: JSON.stringify(script) });
+  const uploadsCleared = await deleteUploadedReferences(projectId).catch((err) => {
+    console.error("couldn't clean up uploaded references:", err);
+    return false;
   });
 
-  await prisma.galleryItem.update({
-    where: { projectId },
-    data: { status: "finalized" },
-  });
-
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({ ok: true, uploadsCleared }), {
     headers: { "Content-Type": "application/json" },
   });
 }

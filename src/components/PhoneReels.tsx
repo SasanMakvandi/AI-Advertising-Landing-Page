@@ -37,7 +37,7 @@ export function PhoneReels() {
           Follow along
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed text-text-dim">
-          A running feed of behind-the-scenes clips and finished work — scroll
+          A running feed of behind-the-scenes clips and finished work. Scroll
           it like you would on the app.
         </p>
       </Reveal>
@@ -126,7 +126,7 @@ export function PhoneReels() {
                   Your campaign belongs here.
                 </h4>
                 <p className="mb-[22px] text-[13.5px] text-white/85">
-                  Send us the brief — we&apos;ll have something back before your
+                  Send us the brief and we&apos;ll have something back before your
                   next scroll break.
                 </p>
                 <a

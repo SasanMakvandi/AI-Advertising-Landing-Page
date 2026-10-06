@@ -373,7 +373,7 @@ export function PromptDemo() {
                       <span className="font-mono text-[13px] text-text-dim">{totalDuration}s total</span>
                     </div>
                     <p className="mb-5 text-[13.5px] leading-[1.5] text-text-dim">
-                      Configure each scene below — edit the shot, or regenerate it on its own.
+                      Configure each scene below. Edit the shot, or regenerate it on its own.
                     </p>
                     <div className="mb-7 flex flex-col gap-3">
                       {promptDemo.scenes.map((scene) => (
@@ -405,7 +405,7 @@ export function PromptDemo() {
                   {promptDemo.refImageNote}
                 </p>
                 <p className="mb-6 text-[13.5px] text-text-dim">
-                  Your generated reference images are on the right — one per scene.
+                  Your generated reference images are on the right: one per scene.
                 </p>
 
                 <ApprovalGate
@@ -430,12 +430,12 @@ export function PromptDemo() {
                       key={p.name}
                       className="rounded-full bg-panel-2 px-3 py-1.5 text-[12px] text-text-dim"
                     >
-                      <span className="font-semibold text-text">{p.name}</span> — {p.limit}
+                      <span className="font-semibold text-text">{p.name}</span>: {p.limit}
                     </span>
                   ))}
                 </div>
                 <p className="mb-6 text-[13.5px] text-text-dim">
-                  Your generated clips are on the right — one per scene.
+                  Your generated clips are on the right: one per scene.
                 </p>
 
                 <ApprovalGate
@@ -471,7 +471,7 @@ export function PromptDemo() {
                           : "border-hair text-text-dim hover:border-text/30 hover:text-text"
                       }`}
                     >
-                      {v.name} <span className="opacity-70">— {v.style}</span>
+                      {v.name} <span className="opacity-70">({v.style})</span>
                     </button>
                   ))}
                 </div>

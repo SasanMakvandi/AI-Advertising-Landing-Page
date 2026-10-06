@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ReelSimple — AI-Engineered, Humanly Directed Production",
+  title: "ReelSimple | AI-Engineered, Humanly Directed Production",
   description:
     "ReelSimple uses AI to cut the cost of photo and video production, then a real creative director shapes the work until it looks professionally made.",
 };

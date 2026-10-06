@@ -6,7 +6,7 @@ import { Pricing } from "@/components/Pricing";
 import { processSteps, services } from "@/lib/content";
 
 export const metadata: Metadata = {
-  title: "What we do — ReelSimple",
+  title: "What we do | ReelSimple",
   description: "How ReelSimple content actually gets made, from brief to launch.",
 };
 
@@ -23,9 +23,9 @@ export default function WhatWeDoPage() {
             How we <em className="font-medium text-accent italic">actually</em> make your content.
           </h1>
           <p className="mx-auto mt-8 max-w-[600px] text-lg leading-[1.65] text-text-dim">
-            No black box. Here&apos;s the process behind everything we ship —
-            ad campaigns, listing photos, product shots — where AI does the
-            heavy lifting, and where a person takes over.
+            No black box. Here&apos;s the process behind everything we ship,
+            from ad campaigns to listing photos to product shots. See where AI
+            does the heavy lifting, and where a person takes over.
           </p>
         </Reveal>
       </section>

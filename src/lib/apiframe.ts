@@ -11,6 +11,7 @@ type CreateVideoJobInput = {
 type VideoJobStatus = {
   status: "QUEUED" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
   videoUrl?: string | null;
+  error?: string | null;
 };
 
 // Our stored "9:16"/"1:1"/"16:9"/"4:5" values mapped to Seedance's
@@ -30,7 +31,7 @@ function getApiKey(): string {
   }
   if (/[^\x00-\xFF]/.test(apiKey)) {
     throw new Error(
-      "APIFRAME_API_KEY contains a character that isn't valid in an HTTP header — it was likely corrupted when pasted into Vercel's environment variables. Re-copy and re-paste the key value."
+      "APIFRAME_API_KEY contains a character that isn't valid in an HTTP header. It was likely corrupted when pasted into Vercel's environment variables. Re-copy and re-paste the key value."
     );
   }
   return apiKey;
@@ -91,8 +92,22 @@ export async function getVideoJobStatus(jobId: string): Promise<VideoJobStatus> 
   }
 
   const json = await res.json();
+  let error: string | null = null;
+  if (json.status === "FAILED") {
+    // The failure payload isn't documented, so log it whole and read the
+    // likeliest fields.
+    console.error(`ApiFrame job ${jobId} failed:`, JSON.stringify(json).slice(0, 1000));
+    const raw = json.error ?? json.errorMessage ?? json.message ?? json.result?.error ?? null;
+    error =
+      typeof raw === "string"
+        ? raw
+        : raw && typeof raw === "object"
+          ? String(raw.message ?? raw.detail ?? JSON.stringify(raw))
+          : null;
+  }
   return {
     status: json.status,
     videoUrl: json.result?.videoUrl ?? null,
+    error: error ? error.slice(0, 300) : null,
   };
 }

@@ -33,8 +33,8 @@ export const promptDemo = {
 
   // Step 1 — scripting
   placeholderPrompt:
-    "A 20-second Instagram Reel for our new ceramic pour-over coffee set — clean, minimal, morning light.",
-  brandNote: "Using your brand profile — warm, minimal, coral accent (edit anytime in Settings)",
+    "A 20-second Instagram Reel for our new ceramic pour-over coffee set: clean, minimal, morning light.",
+  brandNote: "Using your brand profile: warm, minimal, coral accent (edit anytime in Settings)",
   campaignTweaks: [
     {
       label: "Tone",
@@ -66,7 +66,7 @@ export const promptDemo = {
   customPlaceholder: "Type your own...",
   generateScriptCta: "Generate script & voiceover",
   voiceoverScript:
-    "Some mornings deserve more than instant coffee. Meet the pour-over set built for the ritual — hand-glazed ceramic, a slow bloom, and a cup that tastes like you meant it. Available now.",
+    "Some mornings deserve more than instant coffee. Meet the pour-over set built for the ritual: hand-glazed ceramic, a slow bloom, and a cup that tastes like you meant it. Available now.",
   scenes: [
     {
       order: 1,
@@ -111,11 +111,11 @@ export const promptDemo = {
 
   // Step 3 — video generation
   videoProviders: [
-    { name: "Seedance", limit: "up to 30s per clip — longer videos are stitched from multiple clips" },
+    { name: "Seedance", limit: "up to 30s per clip. Longer videos are stitched from multiple clips" },
     { name: "Cling", limit: "up to 15s per clip" },
   ],
   videoGateQuestion: "Happy with the generated video?",
-  videoRedoNote: "Sends you back to the reference images — redoing this step uses additional generation credits.",
+  videoRedoNote: "Sends you back to the reference images. Redoing this step uses additional generation credits.",
 
   // Step 4 — audio (optional)
   voices: [
@@ -131,7 +131,7 @@ export const promptDemo = {
   subtitleGateQuestion: "Look good?",
 
   doneHeadline: "Your video is ready.",
-  doneNote: "This walkthrough is a preview of the real flow — nothing above was actually generated.",
+  doneNote: "This walkthrough is a preview of the real flow. Nothing above was actually generated.",
   finalCta: "Start a real project",
 
   assetsPanelTitle: "Your assets",
@@ -162,7 +162,7 @@ export const projects: Project[] = [
     logoWidth: 605,
     logoHeight: 143,
     description:
-      "Alpéire's oxygen-infused, alpine-stem-cell skincare needed product content that felt as premium as the formula. We generated dozens of AI concept directions, then finished the strongest ones until they looked shelf-ready — no full studio shoot required for every SKU.",
+      "Alpéire's oxygen-infused, alpine-stem-cell skincare needed product content that felt as premium as the formula. We generated dozens of AI concept directions, then finished the strongest ones until they looked shelf-ready, no full studio shoot required for every SKU.",
     result: { label: "Result: ", highlight: "3x", rest: " more ad variations tested per month" },
     video: "/videos/showcase-2.mp4",
   },
@@ -173,7 +173,7 @@ export const projects: Project[] = [
     logoWidth: 400,
     logoHeight: 66,
     description:
-      "Techniques Combat needed launch creative that matched their \"Relentless by Design\" ethos — gear built by fighters, for fighters, tested in real camps. AI got the first concepts moving fast; our creative director shaped it into something that felt premium enough to trust in the cage.",
+      "Techniques Combat needed launch creative that matched their \"Relentless by Design\" ethos: gear built by fighters, for fighters, tested in real camps. AI got the first concepts moving fast; our creative director shaped it into something that felt premium enough to trust in the cage.",
     result: { label: "Result: full brand and launch campaign in ", highlight: "18 days", rest: "" },
     video: "/videos/showcase-1.mp4",
   },
@@ -184,7 +184,7 @@ export const projects: Project[] = [
     logoWidth: 1240,
     logoHeight: 272,
     description:
-      "RENNtech needed cinematic content that matched 35 years of precision Mercedes-Benz engineering — performance without compromise, in frame as well as under the hood. We generated the concept with AI, then art-directed the lighting and composition until it felt like a real campaign shoot.",
+      "RENNtech needed cinematic content that matched 35 years of precision Mercedes-Benz engineering: performance without compromise, in frame as well as under the hood. We generated the concept with AI, then art-directed the lighting and composition until it felt like a real campaign shoot.",
     result: { label: "Result: production time cut by ", highlight: "60%", rest: "" },
     images: ["/images/renntech-shop.png", "/images/renntech-driveway.png"],
   },
@@ -213,37 +213,37 @@ export const reels: Reel[] = [
   {
     video: "/videos/reel-1.mp4",
     handle: "@reelsimple",
-    caption: "Alpéire, on location — shooting the beach concept for Super Hydrating Cream",
+    caption: "Alpéire, on location: shooting the beach concept for Super Hydrating Cream",
     likes: "1.2k",
     comments: "84",
     note: {
-      index: "01 — Alpéire, on location",
+      index: "01: Alpéire, on location",
       title: "Taking the concept to a real shoot",
-      body: "The AI-generated concept nailed the mood, so we brought it to an actual coastal shoot — real product, real light, real texture. That pass is what separates an ad that looks generated from one that looks intentional.",
+      body: "The AI-generated concept nailed the mood, so we brought it to an actual coastal shoot: real product, real light, real texture. That pass is what separates an ad that looks generated from one that looks intentional.",
     },
   },
   {
     video: "/videos/reel-3.mp4",
     handle: "@reelsimple",
-    caption: "Sourcing the story — the alpine rose fields behind Alpéire's hero ingredient",
+    caption: "Sourcing the story: the alpine rose fields behind Alpéire's hero ingredient",
     likes: "2.4k",
     comments: "112",
     note: {
-      index: "02 — The ingredient story",
+      index: "02: The ingredient story",
       title: "Where the rose extract actually comes from",
-      body: "Every Alpéire product leans on its ingredient story. We shot the sourcing itself — not a stock photo of a flower — so the claim on the label has something real behind it.",
+      body: "Every Alpéire product leans on its ingredient story. We shot the sourcing itself, not a stock photo of a flower, so the claim on the label has something real behind it.",
     },
   },
   {
     video: "/videos/reel-2.mp4",
     handle: "@reelsimple",
-    caption: "RENNtech — a sponsored post built to pass as organic",
+    caption: "RENNtech: a sponsored post built to pass as organic",
     likes: "3.1k",
     comments: "156",
     note: {
-      index: "03 — RENNtech",
+      index: "03: RENNtech",
       title: "Built to pass as organic",
-      body: "For the V12 Sledgehammer launch, sometimes the win is when nobody can tell it's sponsored. We built this one to sit indistinguishable from the feed around it — verified badge, native caption, the whole format baked directly into the creative.",
+      body: "For the V12 Sledgehammer launch, sometimes the win is when nobody can tell it's sponsored. We built this one to sit indistinguishable from the feed around it: verified badge, native caption, the whole format baked directly into the creative.",
     },
   },
 ];
@@ -253,7 +253,7 @@ export const pricing = [
     name: "AI Content",
     price: "$600",
     priceSuffix: "/ 2 pieces of content",
-    description: "AI-generated photo or video content, ready to use — for ads, listings, or anything else you need.",
+    description: "AI-generated photo or video content, ready to use, for ads, listings, or anything else you need.",
     features: [
       "AI-generated photo or video concepts and edits",
       "Sized for the platform or use case you need",
@@ -280,7 +280,7 @@ export const pricing = [
   {
     name: "Full Campaign",
     description:
-      "A complete campaign we help run for you — strategy, creative, and ongoing social support.",
+      "A complete campaign we help run for you, strategy, creative, and ongoing social support.",
     features: [
       "Everything in AI + Shoot",
       "Strategy consultation",
@@ -298,7 +298,7 @@ export const about = {
   headlineEm: "too much",
   headlineEnd: " to make.",
   paragraphs: [
-    "Most studios either cut corners to hit a budget, or charge full production rates no matter how small the job is. We didn't think you should have to choose. So we built a process that uses AI to handle the expensive, time-consuming part of a shoot — and kept a real creative director on every project to make sure it never looks like it.",
+    "Most studios either cut corners to hit a budget, or charge full production rates no matter how small the job is. We didn't think you should have to choose. So we built a process that uses AI to handle the expensive, time-consuming part of a shoot, and kept a real creative director on every project to make sure it never looks like it.",
     "We're a small team based in Toronto, working with small businesses, realtors, and anyone else who needs professional photo or video content without paying for a full production crew every time.",
   ],
 };
@@ -307,7 +307,7 @@ export const values = [
   {
     title: "Speed without slop",
     description:
-      "AI gets a first draft moving in hours, not weeks — but nothing ships until a person has actually looked at it.",
+      "AI gets a first draft moving in hours, not weeks, but nothing ships until a person has actually looked at it.",
   },
   {
     title: "Direction, not automation",
@@ -343,12 +343,12 @@ export const processSteps = [
   {
     index: "01",
     title: "Brief & discovery",
-    body: "We start with a short call to understand your brand, your audience, and what 'good' actually looks like for you — not just the deliverable list.",
+    body: "We start with a short call to understand your brand, your audience, and what 'good' actually looks like for you, not just the deliverable list.",
   },
   {
     index: "02",
     title: "AI-assisted concepting",
-    body: "We generate a wide spread of directions fast — dozens of headlines, visual concepts, and angles — so we're picking from real options, not guessing at the first idea.",
+    body: "We generate a wide spread of directions fast, dozens of headlines, visual concepts, and angles, so we're picking from real options, not guessing at the first idea.",
   },
   {
     index: "03",
@@ -358,7 +358,7 @@ export const processSteps = [
   {
     index: "04",
     title: "Production, when it's warranted",
-    body: "If the concept calls for it, we bring in a real shoot — photo, video, or both — to finish what AI could only sketch.",
+    body: "If the concept calls for it, we bring in a real shoot, photo, video, or both, to finish what AI could only sketch.",
   },
   {
     index: "05",
@@ -368,22 +368,22 @@ export const processSteps = [
   {
     index: "06",
     title: "Launch & handoff",
-    body: "You get finished, ready-to-use assets — sized for every platform or use case — plus the reasoning behind why we made the choices we did.",
+    body: "You get finished, ready-to-use assets, sized for every platform or use case, plus the reasoning behind why we made the choices we did.",
   },
 ];
 
 export const costBreakdown = {
   eyebrow: "Let's talk numbers",
-  headline: "Okay, enough talking — let's talk numbers.",
+  headline: "Okay, enough talking. Let's talk numbers.",
   description:
     "Here's what it usually costs to launch a brand from scratch, piecing it together with a separate freelancer or agency for each part.",
   items: [
-    { label: "Brand identity & logo design", cost: "$2,000–$5,000" },
-    { label: "A professional ad photo or video shoot", cost: "$1,500–$4,000" },
-    { label: "Advertising & marketing consultation", cost: "$150–$300 / hr" },
-    { label: "Website design & development", cost: "$3,000–$8,000" },
-    { label: "Ongoing site maintenance & hosting", cost: "$100–$300 / mo" },
-    { label: "Copywriting for your site and ads", cost: "$500–$1,500" },
+    { label: "Brand identity & logo design", cost: "$2,000 to $5,000" },
+    { label: "A professional ad photo or video shoot", cost: "$1,500 to $4,000" },
+    { label: "Advertising & marketing consultation", cost: "$150 to $300 / hr" },
+    { label: "Website design & development", cost: "$3,000 to $8,000" },
+    { label: "Ongoing site maintenance & hosting", cost: "$100 to $300 / mo" },
+    { label: "Copywriting for your site and ads", cost: "$500 to $1,500" },
     { label: "Coordinating five different freelancers", cost: "Countless hours" },
   ],
   punchlineStart: "With ReelSimple, none of that is separate. ",
@@ -398,7 +398,7 @@ export const services = [
   },
   {
     title: "Real estate & listing photos",
-    description: "Staged, magazine-ready shots for a listing — without the cost of a full physical staging and shoot.",
+    description: "Staged, magazine-ready shots for a listing, without the cost of a full physical staging and shoot.",
   },
   {
     title: "Product photography",
@@ -406,7 +406,7 @@ export const services = [
   },
   {
     title: "Brand identity",
-    description: "Logo, palette, type, and tone — built to hold up across every surface you'll use it on.",
+    description: "Logo, palette, type, and tone, built to hold up across every surface you'll use it on.",
   },
   {
     title: "Video & motion",

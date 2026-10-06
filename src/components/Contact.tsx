@@ -41,8 +41,8 @@ export function Contact() {
           Tell us what you need shot
         </h2>
         <p className="mt-4 text-base leading-relaxed text-text-dim">
-          Share a bit about your brand and what you need — an ad campaign,
-          listing photos, product shots — we&apos;ll follow up within a
+          Share a bit about your brand and what you need (an ad campaign,
+          listing photos, product shots) and we&apos;ll follow up within a
           couple of days.
         </p>
 
@@ -53,7 +53,7 @@ export function Contact() {
             </div>
             <p className="text-base font-medium text-text">Message sent</p>
             <p className="text-sm text-text-dim">
-              Thanks for reaching out — we&apos;ll be in touch soon.
+              Thanks for reaching out. We&apos;ll be in touch soon.
             </p>
           </Reveal>
         ) : (
@@ -102,7 +102,7 @@ export function Contact() {
 
             {status === "error" && (
               <p className="text-center text-sm text-coral">
-                Something went wrong — please try again.
+                Something went wrong. Please try again.
               </p>
             )}
           </form>
